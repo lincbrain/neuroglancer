@@ -549,7 +549,6 @@ export class ZarrDataSource extends DataSourceProvider {
 
   async completeUrl(options: CompleteUrlOptions) {
     // Pattern is infallible.
-    console.log(options);
     const [, , query] = options.providerUrl.match(/([^?]*)(?:\?(.*))?$/)!;
     if (query !== undefined) {
       return applyCompletionOffset(
@@ -560,12 +559,10 @@ export class ZarrDataSource extends DataSourceProvider {
         ),
       );
     }
-    const x = await completeHttpPath(
+    return await completeHttpPath(
       options.credentialsManager,
       options.providerUrl,
       options.cancellationToken,
     );
-    console.log(x)
-    return x
   }
 }
