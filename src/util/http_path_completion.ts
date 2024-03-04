@@ -77,20 +77,23 @@ export async function getHtmlPathCompletions(
   cancellationToken: CancellationToken,
   credentialsProvider?: SpecialProtocolCredentialsProvider,
 ): Promise<BasicCompletionResult> {
-  console.log("getHtmlPathCompletions");
   const m = url.match(/^([a-z]+:\/\/.*\/)([^/?#]*)$/);
+  console.log(m)
   if (m === null) throw null;
   const entries = await getHtmlDirectoryListing(
     m[1],
     cancellationToken,
     credentialsProvider,
   );
+  console.log(entries)
   const offset = m[1].length;
   const matches: Completion[] = [];
   for (const entry of entries) {
+    console.log(url)
     if (!entry.startsWith(url)) continue;
     matches.push({ value: entry.substring(offset) });
   }
+  console.log(matches)
   return {
     offset,
     completions: matches,
@@ -117,7 +120,7 @@ const specialProtocolEmptyCompletions: CompletionWithDescription[] = [
     description: "Google Cloud Storage (XML API) authenticated via ngauth",
   },
   { value: "s3://", description: "Amazon Simple Storage Service (S3)" },
-  { value: "https://" },
+  { value: "https://" }, //Aaron
   { value: "http://" },
 ];
 
@@ -168,7 +171,7 @@ export async function completeHttpPath(
         cancellationToken,
       );
     }
-    if (protocol === "s3" && path.length > 0) {
+    if ((protocol === "s3" || protocol === "https") && path.length > 0) {
       return await getS3PathCompletions(host, path, cancellationToken);
     }
     const s3Match = parsedUrl.match(
@@ -183,7 +186,7 @@ export async function completeHttpPath(
         cancellationToken,
       );
     }
-    if ((protocol === "http" || protocol === "https") && path.length > 0) {
+    if ((host === "neuroglancer.lincbrain.org" || protocol === "https") && path.length > 0) {
       return await getHtmlPathCompletions(
         parsedUrl,
         cancellationToken,

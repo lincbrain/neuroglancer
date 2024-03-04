@@ -21,7 +21,7 @@ import { cancellableFetchOk } from "#src/util/http_request.js";
 import { getS3CompatiblePathCompletions } from "#src/util/s3_bucket_listing.js";
 
 // Support for s3:// special protocol.
-
+// Aaron
 export async function cancellableFetchS3Ok<T>(
   bucket: string,
   path: string,
@@ -38,6 +38,37 @@ export async function cancellableFetchS3Ok<T>(
 }
 
 export async function getS3PathCompletions(
+  bucket: string,
+  path: string,
+  cancellationToken: CancellationToken,
+) {
+  return await getS3CompatiblePathCompletions(
+    undefined,
+    `s3://${bucket}`,
+    `https://neuroglancer.lincbrain.org`,
+    path,
+    cancellationToken,
+  );
+}
+
+export async function cancellableFetchCloudFrontOk<T>(
+  bucket: string,
+  path: string,
+  requestInit: RequestInit,
+  transformResponse: ResponseTransform<T>,
+  cancellationToken: CancellationToken = uncancelableToken,
+) {
+  console.log(bucket)
+  console.log(`https://${bucket}${path}`)
+  return await cancellableFetchOk(
+    `https://${bucket}${path}`,
+    requestInit,
+    transformResponse,
+    cancellationToken,
+  );
+}
+
+export async function getCloudFrontPathCompletions(
   bucket: string,
   path: string,
   cancellationToken: CancellationToken,

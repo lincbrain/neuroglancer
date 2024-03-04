@@ -25,7 +25,9 @@ import { uncancelableToken } from "#src/util/cancellation.js";
 import type { ResponseTransform } from "#src/util/http_request.js";
 import { parseUrl } from "#src/util/http_request.js";
 import { getRandomHexString } from "#src/util/random.js";
-import { cancellableFetchS3Ok } from "#src/util/s3.js";
+import {
+  cancellableFetchS3Ok
+} from "#src/util/s3.js";
 
 export type SpecialProtocolCredentials = any;
 export type SpecialProtocolCredentialsProvider =
@@ -118,7 +120,7 @@ export function parseSpecialUrl(
         ),
         url: url,
       };
-    case "s3":
+    case "s3":  // Aaron
       return {
         credentialsProvider: undefined,
         url,
@@ -186,9 +188,9 @@ export async function cancellableFetchSpecialOk<T>(
         cancellationToken,
       );
     default:
-      return fetchWithOAuth2Credentials(
-        credentialsProvider,
-        url,
+      return cancellableFetchS3Ok(
+        u.host,
+        u.path,
         init,
         transformResponse,
         cancellationToken,
