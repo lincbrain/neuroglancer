@@ -29,8 +29,9 @@ export async function cancellableFetchS3Ok<T>(
   transformResponse: ResponseTransform<T>,
   cancellationToken: CancellationToken = uncancelableToken,
 ) {
+  console.log(bucket)
   return await cancellableFetchOk(
-    `https://${bucket}.s3.amazonaws.com${path}`,
+    `https://neuroglancer.lincbrain.org${path}`,
     requestInit,
     transformResponse,
     cancellationToken,
