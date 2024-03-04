@@ -43,9 +43,10 @@ export async function getS3PathCompletions(
   path: string,
   cancellationToken: CancellationToken,
 ) {
+  console.log(bucket)
   return await getS3CompatiblePathCompletions(
     undefined,
-    `s3://${bucket}`,
+    `https://neuroglancer.lincbrain.org`,
     `https://neuroglancer.lincbrain.org`,
     path,
     cancellationToken,
