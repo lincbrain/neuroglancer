@@ -60,9 +60,7 @@ class HttpSource(StaticContentSource):
 
     def get(self, name, query):
         import requests
-
         print("http", repr(name), repr(query))
-
         full_url = posixpath.join(self.url, name)
         r = requests.get(full_url + query)
         if r.status_code >= 200 and r.status_code < 300:
