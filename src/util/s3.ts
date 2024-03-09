@@ -29,13 +29,23 @@ export async function cancellableFetchS3Ok<T>(
   transformResponse: ResponseTransform<T>,
   cancellationToken: CancellationToken = uncancelableToken,
 ) {
-  console.log(bucket)
-  return await cancellableFetchOk(
-    `https://neuroglancer.lincbrain.org${path}`,
-    requestInit,
-    transformResponse,
-    cancellationToken,
-  );
+  if (bucket.includes('s3')) {
+    console.log("hey")
+    return await cancellableFetchOk(
+      `https://${bucket}.s3.amazonaws.com${path}`,
+      requestInit,
+      transformResponse,
+      cancellationToken,
+    );
+  } else {
+    console.log(bucket);
+    return await cancellableFetchOk(
+      `https://neuroglancer.lincbrain.org${path}`,
+      requestInit,
+      transformResponse,
+      cancellationToken,
+    );
+  }
 }
 
 export async function getS3PathCompletions(
@@ -43,15 +53,27 @@ export async function getS3PathCompletions(
   path: string,
   cancellationToken: CancellationToken,
 ) {
-  console.log(bucket)
-  return await getS3CompatiblePathCompletions(
-    undefined,
-    `https://neuroglancer.lincbrain.org`,
-    `https://neuroglancer.lincbrain.org`,
-    path,
-    cancellationToken,
-  );
+  if (bucket.includes('s3')) {
+    console.log("other s3 bucket")
+    return await getS3CompatiblePathCompletions(
+      undefined,
+      `s3://${bucket}`,
+      `https://${bucket}.s3.amazonaws.com`,
+      path,
+      cancellationToken,
+    );
+  } else {
+    console.log("linc bucket");
+    return await getS3CompatiblePathCompletions(
+      undefined,
+      `https://neuroglancer.lincbrain.org`,
+      `https://neuroglancer.lincbrain.org`,
+      path,
+      cancellationToken,
+    );
+  }
 }
+
 
 export async function cancellableFetchCloudFrontOk<T>(
   bucket: string,

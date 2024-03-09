@@ -326,6 +326,7 @@ class TrackableViewerState extends CompoundTrackable {
     this.add("partialViewport", viewer.partialViewport);
     this.add("selectedStateServer", viewer.selectedStateServer);
     this.add("toolBindings", viewer.toolBinder);
+    // Aaron
   }
 
   restoreState(obj: any) {
