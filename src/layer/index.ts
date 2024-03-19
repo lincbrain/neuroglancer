@@ -2329,6 +2329,7 @@ export function registerLayerType(
   layerConstructor: UserLayerConstructor,
   name: string = layerConstructor.type,
 ) {
+  console.log(layerConstructor)
   layerTypes.set(name, layerConstructor);
 }
 

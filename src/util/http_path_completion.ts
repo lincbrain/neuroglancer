@@ -171,28 +171,32 @@ export async function completeHttpPath(
         cancellationToken,
       );
     }
-    if ((protocol === "s3" || protocol === "https") && path.length > 0) {
+    if (protocol === "s3" && path.length > 0) {
       return await getS3PathCompletions(host, path, cancellationToken);
     }
-    // const s3Match = parsedUrl.match(
-    //   /^((?:http|https):\/\/(?:storage\.googleapis\.com\/[^/]+|[^/]+\.storage\.googleapis\.com|[^/]+\.s3(?:[^./]+)?\.amazonaws.com))(\/.*)$/,
-    // );
-    // if (s3Match !== null) {
-    //   return await getS3CompatiblePathCompletions(
-    //     credentialsProvider,
-    //     s3Match[1],
-    //     s3Match[1],
-    //     s3Match[2],
-    //     cancellationToken,
-    //   );
-    // }
-    if (protocol === "https" && path.length > 0) {
-      return await getHtmlPathCompletions(
-        parsedUrl,
-        cancellationToken,
+    const s3Match = parsedUrl.match(
+      /^((?:http|https):\/\/(?:storage\.googleapis\.com\/[^/]+|[^/]+\.storage\.googleapis\.com|[^/]+\.s3(?:[^./]+)?\.amazonaws.com))(\/.*)$/,
+    );
+    if (s3Match !== null) {
+      return await getS3CompatiblePathCompletions(
         credentialsProvider,
+        s3Match[1],
+        s3Match[1],
+        s3Match[2],
+        cancellationToken,
       );
     }
+    // Catch all for CloudFront neuroglancer
+    if (protocol === "https" && path.length > 0) {
+      return await getS3PathCompletions(host, path, cancellationToken);
+    }
+    // if (protocol === "https" && path.length > 0) {
+    //   return await getHtmlPathCompletions(
+    //     parsedUrl,
+    //     cancellationToken,
+    //     credentialsProvider,
+    //   );
+    // }
     throw null;
   })();
   return {
