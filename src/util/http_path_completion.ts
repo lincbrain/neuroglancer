@@ -78,22 +78,18 @@ export async function getHtmlPathCompletions(
   credentialsProvider?: SpecialProtocolCredentialsProvider,
 ): Promise<BasicCompletionResult> {
   const m = url.match(/^([a-z]+:\/\/.*\/)([^/?#]*)$/);
-  console.log(m)
   if (m === null) throw null;
   const entries = await getHtmlDirectoryListing(
     m[1],
     cancellationToken,
     credentialsProvider,
   );
-  console.log(entries)
   const offset = m[1].length;
   const matches: Completion[] = [];
   for (const entry of entries) {
-    console.log(url)
     if (!entry.startsWith(url)) continue;
     matches.push({ value: entry.substring(offset) });
   }
-  console.log(matches)
   return {
     offset,
     completions: matches,

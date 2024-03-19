@@ -120,7 +120,7 @@ export function parseSpecialUrl(
         ),
         url: url,
       };
-    case "s3":  // Aaron
+    case "s3":
       return {
         credentialsProvider: undefined,
         url,

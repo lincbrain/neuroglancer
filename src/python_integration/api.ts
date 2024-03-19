@@ -29,7 +29,6 @@ function getServerUrls() {
   if (match === null) {
     throw new Error("Failed to determine token from URL.");
   }
-  // Aaron
   const prefix = `${window.location.origin}${match[1]}`.replace(/\/+$/, "");
   const token = match[2];
   return {
