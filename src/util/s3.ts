@@ -22,6 +22,7 @@ import { getS3CompatiblePathCompletions } from "#src/util/s3_bucket_listing.js";
 
 const NEUROGLANCER_BASE_URL = process.env.NEUROGLANCER_BASE_URL || 'https://neuroglancer.lincbrain.org'; // Default to the original URL if MY_ENV_VAR is not set
 
+// Support for s3:// special protocol.
 export async function cancellableFetchS3Ok<T>(
   bucket: string,
   path: string,
