@@ -20,7 +20,7 @@ import type { ResponseTransform } from "#src/util/http_request.js";
 import { cancellableFetchOk } from "#src/util/http_request.js";
 import { getS3CompatiblePathCompletions } from "#src/util/s3_bucket_listing.js";
 
-const NEUROGLANCER_BASE_URL = import.meta.env.VITE_NEUROGLANCER_BASE_URL || 'https://neuroglancer.lincbrain.org';
+const NEUROGLANCER_BASE_URL = process.env.NEUROGLANCER_BASE_URL || 'https://neuroglancer.lincbrain.org';
 
 // Support for s3:// special protocol.
 export async function cancellableFetchS3Ok<T>(
