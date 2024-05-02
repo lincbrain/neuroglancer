@@ -20,8 +20,9 @@ import type { ResponseTransform } from "#src/util/http_request.js";
 import { cancellableFetchOk } from "#src/util/http_request.js";
 import { getS3CompatiblePathCompletions } from "#src/util/s3_bucket_listing.js";
 
-// Support for s3:// special protocol.
+const NEUROGLANCER_BASE_URL = process.env.NEUROGLANCER_BASE_URL || 'https://neuroglancer.lincbrain.org';
 
+// Support for s3:// special protocol.
 export async function cancellableFetchS3Ok<T>(
   bucket: string,
   path: string,
@@ -29,12 +30,21 @@ export async function cancellableFetchS3Ok<T>(
   transformResponse: ResponseTransform<T>,
   cancellationToken: CancellationToken = uncancelableToken,
 ) {
-  return await cancellableFetchOk(
-    `https://${bucket}.s3.amazonaws.com${path}`,
-    requestInit,
-    transformResponse,
-    cancellationToken,
-  );
+  if (bucket.includes('s3')) {
+    return await cancellableFetchOk(
+      `https://${bucket}${path}`,
+      requestInit,
+      transformResponse,
+      cancellationToken,
+    );
+  } else {
+    return await cancellableFetchOk(
+      `${NEUROGLANCER_BASE_URL}${path}`,
+      requestInit,
+      transformResponse,
+      cancellationToken,
+    );
+  }
 }
 
 export async function getS3PathCompletions(
@@ -42,11 +52,21 @@ export async function getS3PathCompletions(
   path: string,
   cancellationToken: CancellationToken,
 ) {
-  return await getS3CompatiblePathCompletions(
-    undefined,
-    `s3://${bucket}`,
-    `https://${bucket}.s3.amazonaws.com`,
-    path,
-    cancellationToken,
-  );
+  if (bucket.includes('s3')) {
+    return await getS3CompatiblePathCompletions(
+      undefined,
+      `s3://${bucket}`,
+      `https://${bucket}.s3.amazonaws.com`,
+      path,
+      cancellationToken,
+    );
+  } else {
+    return await getS3CompatiblePathCompletions(
+      undefined,
+      NEUROGLANCER_BASE_URL,
+      NEUROGLANCER_BASE_URL,
+      path,
+      cancellationToken,
+    );
+  }
 }
