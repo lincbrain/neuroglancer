@@ -1,6 +1,5 @@
-name: Deploy Preview
+name: Build and Deploy Preview
 
-# Trigger the workflow on push to ak-merge-upstream and via manual dispatch
 on:
   push:
     branches:
@@ -19,13 +18,19 @@ on:
         type: string
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-
+    outputs:
+      pr_id: ${{ steps.set-vars.outputs.pr_id }}
+      commit_sha: ${{ steps.set-vars.outputs.commit_sha }}
     steps:
-      # 1. Set Deployment Variables
-      - name: "Set Deployment Variables"
-        id: vars
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.commit_sha || github.sha }}
+
+      - name: Set Deployment Variables
+        id: set-vars
         run: |
           pr_id="${{ github.event.inputs.pr_id }}"
           pr_id=${pr_id:-manual}
@@ -34,48 +39,44 @@ jobs:
           echo "pr_id=${pr_id}" >> $GITHUB_OUTPUT
           echo "commit_sha=${commit_sha}" >> $GITHUB_OUTPUT
 
-      # 2. (Optional) Debug Deployment Variables
-      - name: "Debug Deployment Variables"
+      - name: (Optional) Debug Deployment Variables
         run: |
-          echo "PR ID: ${{ steps.vars.outputs.pr_id }}"
-          echo "Commit SHA: ${{ steps.vars.outputs.commit_sha }}"
+          echo "PR ID: ${{ steps.set-vars.outputs.pr_id }}"
+          echo "Commit SHA: ${{ steps.set-vars.outputs.commit_sha }}"
 
-      # 3. Create a Pending Commit Status
-      - name: "Create commit status - Pending"
+      - name: Build Project
+        run: |
+          # Your build commands here
+          mkdir -p dist/client
+          echo "<html><body><h1>Preview</h1></body></html>" > dist/client/index.html
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: client
+          path: dist/client
+
+      - name: List Uploaded Artifacts
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const commitId = "${{ steps.vars.outputs.commit_sha }}";
-            const prId = "${{ steps.vars.outputs.pr_id }}";
-            const runId = "${{ github.run_id }}";
-            await github.rest.repos.createCommitStatus({
-                context: "client-preview",
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                sha: commitId,
-                state: "pending",
-                description: prId === 'manual' 
-                  ? `Creating manual preview` 
-                  : `Creating preview for PR #${prId}`,
-                target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId}`,
+            const artifacts = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
             });
+            console.log("Available Artifacts:", artifacts.data.artifacts.map(a => a.name));
 
-      # 4. Checkout the Specific Commit
-      - name: Checkout repository at specific commit
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.vars.outputs.commit_sha }}
-
-      # 5. Download the Build Artifact
-      - name: Download build artifact
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Build Artifact
         uses: actions/download-artifact@v4
         with:
           name: client
           path: dist/client
-          run-id: ${{ github.run_id }} # Adjust if artifacts are from a different run
 
-      # 6. Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -83,22 +84,21 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-2  # Update if your region is different
 
-      # 7. Upload to S3 Using the Secret and pr_id
       - name: Upload to S3
         run: |
-          aws s3 sync dist/client/ ${{ secrets.CLOUDFRONT_DEPLOYMENT_LOCATION }}/staging/pr${{ steps.vars.outputs.pr_id }}/ --delete
+          aws s3 sync dist/client/ ${{ secrets.CLOUDFRONT_DEPLOYMENT_LOCATION }}/staging/pr${{ needs.build.outputs.pr_id }}/ --delete
 
-      # 8. Update Commit Status to Success
-      - name: "Update commit status - Success"
+      - name: Create Commit Status - Success
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # Use PAT if GITHUB_TOKEN lacks permissions
           script: |
-            const commitId = "${{ steps.vars.outputs.commit_sha }}";
-            const prId = "${{ steps.vars.outputs.pr_id }}";
+            const commitId = "${{ needs.build.outputs.commit_sha }}";
+            const prId = "${{ needs.build.outputs.pr_id }}";
+            const runId = "${{ github.run_id }}";
             const targetUrl = prId === 'manual'
-              ? `https://your-cloudfront-domain.com/manual` // Replace with your actual CloudFront URL for manual deployments
-              : `https://your-cloudfront-domain.com/pr${prId}`; // Replace with your actual CloudFront URL for PR previews
+              ? `https://your-cloudfront-domain.com/manual`  // Replace with your actual CloudFront URL for manual deployments
+              : `https://your-cloudfront-domain.com/pr${prId}`;  // Replace with your actual CloudFront URL for PR previews
             const description = `Preview deployed to S3: ${targetUrl}`;
             await github.rest.repos.createCommitStatus({
                 context: "client-preview",
