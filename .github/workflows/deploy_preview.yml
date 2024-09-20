@@ -28,11 +28,17 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha || github.sha }}
 
+      - name: Install Dependencies
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+        run: npm install
+
       - name: Build Project
-        run: |
-          npm run build
-          pwd
-          ls
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+        run: npm run build
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
