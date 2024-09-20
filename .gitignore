@@ -21,3 +21,6 @@ tsconfig.tsbuildinfo
 .eslintcache
 /lib
 /.firebase
+.idea/
+yarn.lock
+.DS_Store
