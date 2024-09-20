@@ -2,6 +2,9 @@ name: Deploy Preview
 
 # Trigger the workflow manually
 on:
+  push:
+    branches:
+      - ak-merge-upstream
   workflow_dispatch:
     inputs:
       pr_id:
@@ -11,7 +14,8 @@ on:
         type: string
       commit_sha:
         description: 'Commit SHA to Deploy'
-        required: true
+        required: false
+        default: ''
         type: string
 
 jobs:
