@@ -20,13 +20,17 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    outputs:
-      artifact-name: ${{ steps.upload-artifact.outputs.artifact-name }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.commit_sha || github.sha }}
+
+      - name: Set short sha name for sub-directory
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: Check outputs
+        run: echo ${{ steps.vars.outputs.sha_short }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -48,4 +52,4 @@ jobs:
 
       - name: Upload to S3
         run: |
-          aws s3 sync dist/client/ ${{ secrets.CLOUDFRONT_DEPLOYMENT_LOCATION }}/staging/pr${{ github.event.inputs.pr_id || 'manual' }}/ --delete
+          aws s3 sync dist/client/ ${{ secrets.CLOUDFRONT_DEPLOYMENT_LOCATION }}/staging/${{ steps.vars.outputs.sha_short }}/ --delete
