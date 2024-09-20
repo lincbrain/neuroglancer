@@ -1,67 +1,159 @@
-name: Deploy preview
+name: Deploy Preview
 
+# Trigger the workflow manually
 on:
-  workflow_run:
-    workflows: ["Build preview"]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr_id:
+        description: 'Pull Request ID'
+        required: false
+        default: 'manual'
+        type: string
+      commit_sha:
+        description: 'Commit SHA to Deploy'
+        required: true
+        type: string
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
     steps:
-      - name: "Create commit status"
+      # 1. Create a Pending Commit Status
+      - name: "Create commit status - Pending"
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const commitId = "${{ github.event.workflow_run.head_commit.id }}";
+            const commitId = "${{ github.event.inputs.commit_sha }}";
+            const prId = "${{ github.event.inputs.pr_id }}";
             await github.rest.repos.createCommitStatus({
                 context: "client-preview",
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 sha: commitId,
                 state: "pending",
-                description: `Creating preview`,
-                target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                description: prId === 'manual' 
+                  ? `Creating manual preview` 
+                  : `Creating preview for PR #${prId}`,
+                target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.run_id}`,
             });
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+
+      # 2. Checkout the Specific Commit
+      - name: Checkout repository at specific commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
+
+      # 3. Download the Build Artifact
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
         with:
           name: client
           path: dist/client
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          run-id: "${{ github.event.workflow_run.id }}"
-      - name: Get PR ID
-        # https://github.com/orgs/community/discussions/25220#discussioncomment-7532132
-        id: pr-id
-        run: |
-          PR_ID=$(gh run view -R ${{ github.repository }} ${{ github.event.workflow_run.id }} | grep -oP '#[0-9]+ . ${{ github.event.workflow_run.id }}' | grep -oP '#[0-9]+' | cut -c 2-)
-          echo "pr-id=${PR_ID}" >> $GITHUB_OUTPUT
-        env:
-          GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-      - uses: FirebaseExtended/action-hosting-deploy@v0
-        id: deploy
+          run-id: ${{ github.event.inputs.commit_sha }} # Ensure this aligns with how artifacts are stored
+
+      # 4. Configure AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
         with:
-          repoToken: "${{ secrets.GITHUB_TOKEN }}"
-          firebaseServiceAccount: "${{ secrets.FIREBASE_HOSTING_SERVICE_ACCOUNT_KEY }}"
-          expires: 30d
-          channelId: "pr${{ steps.pr-id.outputs.pr-id }}"
-          projectId: neuroglancer-demo
-          target: app
-      - name: "Update commit status"
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2  # Update if your region is different
+
+      # 5. Upload to S3 Using the Secret
+      - name: Upload to S3
+        run: |
+          aws s3 sync dist/client/ ${{ secrets.CLOUDFRONT_DEPLOYMENT_LOCATION }}/staging/pr${{ github.event.inputs.pr_id }}/
+
+      # 6. Update Commit Status to Success
+      - name: "Update commit status - Success"
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const expires = new Date("${{ steps.deploy.outputs.expire_time }}");
-            const commitId = "${{ github.event.workflow_run.head_commit.id }}";
+            const commitId = "${{ github.event.inputs.commit_sha }}";
+            const prId = "${{ github.event.inputs.pr_id }}";
+            const targetUrl = prId === 'manual'
+              ? `https://your-cloudfront-domain.com/manual` // Replace with your actual CloudFront URL for manual deployments
+              : `https://your-cloudfront-domain.com/pr${prId}`; // Replace with your actual CloudFront URL for PR previews
+            const description = prId === 'manual'
+              ? `Preview deployed to S3: ${targetUrl}`
+              : `Preview deployed to S3: ${targetUrl}`;
             await github.rest.repos.createCommitStatus({
                 context: "client-preview",
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 sha: commitId,
                 state: "success",
-                target_url: "${{ steps.deploy.outputs.details_url }}",
-                description: `Preview created, expires at: ${expires.toISOString()}`,
+                target_url: targetUrl,
+                description: description,
             });
+
+#name: Deploy preview
+#
+#on:
+#  workflow_run:
+#    workflows: ["Build preview"]
+#    types: [completed]
+#
+#jobs:
+#  deploy:
+#    runs-on: ubuntu-latest
+#    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+#    steps:
+#      - name: "Create commit status"
+#        uses: actions/github-script@v7
+#        with:
+#          github-token: ${{ secrets.GITHUB_TOKEN }}
+#          script: |
+#            const commitId = "${{ github.event.workflow_run.head_commit.id }}";
+#            await github.rest.repos.createCommitStatus({
+#                context: "client-preview",
+#                owner: context.repo.owner,
+#                repo: context.repo.repo,
+#                sha: commitId,
+#                state: "pending",
+#                description: `Creating preview`,
+#                target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+#            });
+#      - uses: actions/checkout@v4
+#      - uses: actions/download-artifact@v4
+#        with:
+#          name: client
+#          path: dist/client
+#          github-token: "${{ secrets.GITHUB_TOKEN }}"
+#          run-id: "${{ github.event.workflow_run.id }}"
+#      - name: Get PR ID
+#        # https://github.com/orgs/community/discussions/25220#discussioncomment-7532132
+#        id: pr-id
+#        run: |
+#          PR_ID=$(gh run view -R ${{ github.repository }} ${{ github.event.workflow_run.id }} | grep -oP '#[0-9]+ . ${{ github.event.workflow_run.id }}' | grep -oP '#[0-9]+' | cut -c 2-)
+#          echo "pr-id=${PR_ID}" >> $GITHUB_OUTPUT
+#        env:
+#          GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+#      - uses: FirebaseExtended/action-hosting-deploy@v0
+#        id: deploy
+#        with:
+#          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+#          firebaseServiceAccount: "${{ secrets.FIREBASE_HOSTING_SERVICE_ACCOUNT_KEY }}"
+#          expires: 30d
+#          channelId: "pr${{ steps.pr-id.outputs.pr-id }}"
+#          projectId: neuroglancer-demo
+#          target: app
+#      - name: "Update commit status"
+#        uses: actions/github-script@v7
+#        with:
+#          github-token: ${{ secrets.GITHUB_TOKEN }}
+#          script: |
+#            const expires = new Date("${{ steps.deploy.outputs.expire_time }}");
+#            const commitId = "${{ github.event.workflow_run.head_commit.id }}";
+#            await github.rest.repos.createCommitStatus({
+#                context: "client-preview",
+#                owner: context.repo.owner,
+#                repo: context.repo.repo,
+#                sha: commitId,
+#                state: "success",
+#                target_url: "${{ steps.deploy.outputs.details_url }}",
+#                description: `Preview created, expires at: ${expires.toISOString()}`,
+#            });
