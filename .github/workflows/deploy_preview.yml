@@ -1,66 +1,47 @@
-name: Deploy preview
+name: Build and Deploy Staging
 
 on:
-  workflow_run:
-    workflows: ["Build preview"]
-    types: [completed]
+  push:
+    branches:
+      - staging
+      - "**"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - name: "Create commit status"
-        uses: actions/github-script@v7
+      - name: Checkout Repository
+        uses: actions/checkout@v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const commitId = "${{ github.event.workflow_run.head_commit.id }}";
-            await github.rest.repos.createCommitStatus({
-                context: "client-preview",
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                sha: commitId,
-                state: "pending",
-                description: `Creating preview`,
-                target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-            });
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+          ref: ${{ github.event.inputs.commit_sha || github.sha }}
+
+      - name: Set short sha name for sub-directory
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: Check outputs
+        run: echo ${{ steps.vars.outputs.sha_short }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          name: client
-          path: dist/client
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          run-id: "${{ github.event.workflow_run.id }}"
-      - name: Get PR ID
-        # https://github.com/orgs/community/discussions/25220#discussioncomment-7532132
-        id: pr-id
+          node-version: 20.x
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Project
+        run: npm run build
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Upload to S3
         run: |
-          PR_ID=$(gh run view -R ${{ github.repository }} ${{ github.event.workflow_run.id }} | grep -oP '#[0-9]+ . ${{ github.event.workflow_run.id }}' | grep -oP '#[0-9]+' | cut -c 2-)
-          echo "pr-id=${PR_ID}" >> $GITHUB_OUTPUT
-        env:
-          GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-      - uses: FirebaseExtended/action-hosting-deploy@v0
-        id: deploy
-        with:
-          repoToken: "${{ secrets.GITHUB_TOKEN }}"
-          firebaseServiceAccount: "${{ secrets.FIREBASE_HOSTING_SERVICE_ACCOUNT_KEY }}"
-          expires: 30d
-          channelId: "pr${{ steps.pr-id.outputs.pr-id }}"
-          projectId: neuroglancer-demo
-      - name: "Update commit status"
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const expires = new Date("${{ steps.deploy.outputs.expire_time }}");
-            const commitId = "${{ github.event.workflow_run.head_commit.id }}";
-            await github.rest.repos.createCommitStatus({
-                context: "client-preview",
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                sha: commitId,
-                state: "success",
-                target_url: "${{ steps.deploy.outputs.details_url }}",
-                description: `Preview created, expires at: ${expires.toISOString()}`,
-            });
+          aws s3 sync dist/client/ ${{ secrets.CLOUDFRONT_DEPLOYMENT_LOCATION }}/staging/${{ steps.vars.outputs.sha_short }}/ --delete
+
+      - name: Display URL for Neuroglancer
+        run: echo "https://neuroglancer.lincbrain.org/cloudfront/frontend/staging/${{ steps.vars.outputs.sha_short }}/index.html"
