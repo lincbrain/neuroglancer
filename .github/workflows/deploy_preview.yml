@@ -1,21 +1,10 @@
-name: Build and Deploy
+name: Build and Deploy Staging
 
 on:
   push:
     branches:
-      - ak-merge-upstream
-  workflow_dispatch:
-    inputs:
-      pr_id:
-        description: 'Pull Request ID'
-        required: false
-        default: 'manual'
-        type: string
-      commit_sha:
-        description: 'Commit SHA to Deploy'
-        required: false
-        default: ''
-        type: string
+      - staging
+      - '**'
 
 jobs:
   deploy:
@@ -53,3 +42,6 @@ jobs:
       - name: Upload to S3
         run: |
           aws s3 sync dist/client/ ${{ secrets.CLOUDFRONT_DEPLOYMENT_LOCATION }}/staging/${{ steps.vars.outputs.sha_short }}/ --delete
+
+      - name: Display URL for Neuroglancer
+        run: echo "https://neuroglancer.lincbrain.org/cloudfront/frontend/staging/${{ steps.vars.outputs.sha_short }}/index.html"
