@@ -1,4 +1,4 @@
-name: Build and Deploy Preview
+name: Build and Deploy
 
 on:
   push:
@@ -18,94 +18,29 @@ on:
         type: string
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     outputs:
-      pr_id: ${{ steps.set-vars.outputs.pr_id }}
-      commit_sha: ${{ steps.set-vars.outputs.commit_sha }}
+      artifact-name: ${{ steps.upload-artifact.outputs.artifact-name }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.commit_sha || github.sha }}
 
-      - name: Set Deployment Variables
-        id: set-vars
-        run: |
-          pr_id="${{ github.event.inputs.pr_id }}"
-          pr_id=${pr_id:-manual}
-          commit_sha="${{ github.event.inputs.commit_sha }}"
-          commit_sha=${commit_sha:-$GITHUB_SHA}
-          echo "pr_id=${pr_id}" >> $GITHUB_OUTPUT
-          echo "commit_sha=${commit_sha}" >> $GITHUB_OUTPUT
-
-      - name: (Optional) Debug Deployment Variables
-        run: |
-          echo "PR ID: ${{ steps.set-vars.outputs.pr_id }}"
-          echo "Commit SHA: ${{ steps.set-vars.outputs.commit_sha }}"
-
       - name: Build Project
         run: |
-          # Your build commands here
-          mkdir -p dist/client
-          echo "<html><body><h1>Preview</h1></body></html>" > dist/client/index.html
-
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: client
-          path: dist/client
-
-      - name: List Uploaded Artifacts
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const artifacts = await github.rest.actions.listArtifactsForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            });
-            console.log("Available Artifacts:", artifacts.data.artifacts.map(a => a.name));
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: client
-          path: dist/client
+          npm run build
+          pwd
+          ls
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2  # Update if your region is different
+          aws-region: us-east-2
 
       - name: Upload to S3
         run: |
-          aws s3 sync dist/client/ ${{ secrets.CLOUDFRONT_DEPLOYMENT_LOCATION }}/staging/pr${{ needs.build.outputs.pr_id }}/ --delete
-
-      - name: Create Commit Status - Success
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # Use PAT if GITHUB_TOKEN lacks permissions
-          script: |
-            const commitId = "${{ needs.build.outputs.commit_sha }}";
-            const prId = "${{ needs.build.outputs.pr_id }}";
-            const runId = "${{ github.run_id }}";
-            const targetUrl = prId === 'manual'
-              ? `https://your-cloudfront-domain.com/manual`  // Replace with your actual CloudFront URL for manual deployments
-              : `https://your-cloudfront-domain.com/pr${prId}`;  // Replace with your actual CloudFront URL for PR previews
-            const description = `Preview deployed to S3: ${targetUrl}`;
-            await github.rest.repos.createCommitStatus({
-                context: "client-preview",
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                sha: commitId,
-                state: "success",
-                target_url: targetUrl,
-                description: description,
-            });
+          aws s3 sync dist/client/ ${{ secrets.CLOUDFRONT_DEPLOYMENT_LOCATION }}/staging/pr${{ github.event.inputs.pr_id || 'manual' }}/ --delete
