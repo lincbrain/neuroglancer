@@ -1,6 +1,6 @@
 name: Deploy Preview
 
-# Trigger the workflow manually
+# Trigger the workflow on push to ak-merge-upstream and via manual dispatch
 on:
   push:
     branches:
@@ -23,14 +23,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Create a Pending Commit Status
+      # 1. Set Deployment Variables
+      - name: "Set Deployment Variables"
+        id: vars
+        run: |
+          pr_id="${{ github.event.inputs.pr_id }}"
+          pr_id=${pr_id:-manual}
+          commit_sha="${{ github.event.inputs.commit_sha }}"
+          commit_sha=${commit_sha:-$GITHUB_SHA}
+          echo "pr_id=${pr_id}" >> $GITHUB_OUTPUT
+          echo "commit_sha=${commit_sha}" >> $GITHUB_OUTPUT
+
+      # 2. (Optional) Debug Deployment Variables
+      - name: "Debug Deployment Variables"
+        run: |
+          echo "PR ID: ${{ steps.vars.outputs.pr_id }}"
+          echo "Commit SHA: ${{ steps.vars.outputs.commit_sha }}"
+
+      # 3. Create a Pending Commit Status
       - name: "Create commit status - Pending"
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const commitId = "${{ github.event.inputs.commit_sha }}";
-            const prId = "${{ github.event.inputs.pr_id }}";
+            const commitId = "${{ steps.vars.outputs.commit_sha }}";
+            const prId = "${{ steps.vars.outputs.pr_id }}";
+            const runId = "${{ github.run_id }}";
             await github.rest.repos.createCommitStatus({
                 context: "client-preview",
                 owner: context.repo.owner,
@@ -40,24 +58,24 @@ jobs:
                 description: prId === 'manual' 
                   ? `Creating manual preview` 
                   : `Creating preview for PR #${prId}`,
-                target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.run_id}`,
+                target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId}`,
             });
 
-      # 2. Checkout the Specific Commit
+      # 4. Checkout the Specific Commit
       - name: Checkout repository at specific commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commit_sha }}
+          ref: ${{ steps.vars.outputs.commit_sha }}
 
-      # 3. Download the Build Artifact
+      # 5. Download the Build Artifact
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
           name: client
           path: dist/client
-          run-id: ${{ github.event.inputs.commit_sha }} # Ensure this aligns with how artifacts are stored
+          run-id: ${{ github.run_id }} # Adjust if artifacts are from a different run
 
-      # 4. Configure AWS Credentials
+      # 6. Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -65,25 +83,23 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-2  # Update if your region is different
 
-      # 5. Upload to S3 Using the Secret
+      # 7. Upload to S3 Using the Secret and pr_id
       - name: Upload to S3
         run: |
-          aws s3 sync dist/client/ ${{ secrets.CLOUDFRONT_DEPLOYMENT_LOCATION }}/staging/pr${{ github.event.inputs.pr_id }}/
+          aws s3 sync dist/client/ ${{ secrets.CLOUDFRONT_DEPLOYMENT_LOCATION }}/staging/pr${{ steps.vars.outputs.pr_id }}/
 
-      # 6. Update Commit Status to Success
+      # 8. Update Commit Status to Success
       - name: "Update commit status - Success"
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const commitId = "${{ github.event.inputs.commit_sha }}";
-            const prId = "${{ github.event.inputs.pr_id }}";
+            const commitId = "${{ steps.vars.outputs.commit_sha }}";
+            const prId = "${{ steps.vars.outputs.pr_id }}";
             const targetUrl = prId === 'manual'
               ? `https://your-cloudfront-domain.com/manual` // Replace with your actual CloudFront URL for manual deployments
               : `https://your-cloudfront-domain.com/pr${prId}`; // Replace with your actual CloudFront URL for PR previews
-            const description = prId === 'manual'
-              ? `Preview deployed to S3: ${targetUrl}`
-              : `Preview deployed to S3: ${targetUrl}`;
+            const description = `Preview deployed to S3: ${targetUrl}`;
             await github.rest.repos.createCommitStatus({
                 context: "client-preview",
                 owner: context.repo.owner,
@@ -93,71 +109,3 @@ jobs:
                 target_url: targetUrl,
                 description: description,
             });
-
-#name: Deploy preview
-#
-#on:
-#  workflow_run:
-#    workflows: ["Build preview"]
-#    types: [completed]
-#
-#jobs:
-#  deploy:
-#    runs-on: ubuntu-latest
-#    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-#    steps:
-#      - name: "Create commit status"
-#        uses: actions/github-script@v7
-#        with:
-#          github-token: ${{ secrets.GITHUB_TOKEN }}
-#          script: |
-#            const commitId = "${{ github.event.workflow_run.head_commit.id }}";
-#            await github.rest.repos.createCommitStatus({
-#                context: "client-preview",
-#                owner: context.repo.owner,
-#                repo: context.repo.repo,
-#                sha: commitId,
-#                state: "pending",
-#                description: `Creating preview`,
-#                target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-#            });
-#      - uses: actions/checkout@v4
-#      - uses: actions/download-artifact@v4
-#        with:
-#          name: client
-#          path: dist/client
-#          github-token: "${{ secrets.GITHUB_TOKEN }}"
-#          run-id: "${{ github.event.workflow_run.id }}"
-#      - name: Get PR ID
-#        # https://github.com/orgs/community/discussions/25220#discussioncomment-7532132
-#        id: pr-id
-#        run: |
-#          PR_ID=$(gh run view -R ${{ github.repository }} ${{ github.event.workflow_run.id }} | grep -oP '#[0-9]+ . ${{ github.event.workflow_run.id }}' | grep -oP '#[0-9]+' | cut -c 2-)
-#          echo "pr-id=${PR_ID}" >> $GITHUB_OUTPUT
-#        env:
-#          GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-#      - uses: FirebaseExtended/action-hosting-deploy@v0
-#        id: deploy
-#        with:
-#          repoToken: "${{ secrets.GITHUB_TOKEN }}"
-#          firebaseServiceAccount: "${{ secrets.FIREBASE_HOSTING_SERVICE_ACCOUNT_KEY }}"
-#          expires: 30d
-#          channelId: "pr${{ steps.pr-id.outputs.pr-id }}"
-#          projectId: neuroglancer-demo
-#          target: app
-#      - name: "Update commit status"
-#        uses: actions/github-script@v7
-#        with:
-#          github-token: ${{ secrets.GITHUB_TOKEN }}
-#          script: |
-#            const expires = new Date("${{ steps.deploy.outputs.expire_time }}");
-#            const commitId = "${{ github.event.workflow_run.head_commit.id }}";
-#            await github.rest.repos.createCommitStatus({
-#                context: "client-preview",
-#                owner: context.repo.owner,
-#                repo: context.repo.repo,
-#                sha: commitId,
-#                state: "success",
-#                target_url: "${{ steps.deploy.outputs.details_url }}",
-#                description: `Preview created, expires at: ${expires.toISOString()}`,
-#            });
