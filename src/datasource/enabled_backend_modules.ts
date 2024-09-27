@@ -11,5 +11,6 @@ import "#datasource/obj/backend";
 import "#datasource/precomputed/backend";
 import "#datasource/python/backend";
 import "#datasource/render/backend";
+import "#datasource/trk/backend";
 import "#datasource/vtk/backend";
 import "#datasource/zarr/backend";
