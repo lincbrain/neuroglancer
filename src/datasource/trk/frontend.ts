@@ -87,7 +87,7 @@ import { Uint64 } from "#src/util/uint64.js";
 
 
 
-class PrecomputedSkeletonSource extends WithParameters(
+class trkSkeletonSource extends WithParameters(
     WithCredentialsProvider<SpecialProtocolCredentials>()(SkeletonSource),
     SkeletonSourceParameters,
 ) {
@@ -257,7 +257,7 @@ async function getSkeletonSource(
         url,
     );
     return {
-        source: chunkManager.getChunkSource(PrecomputedSkeletonSource, {
+        source: chunkManager.getChunkSource(trkSkeletonSource, {
             credentialsProvider,
             parameters: {
                 url,
@@ -276,7 +276,7 @@ function getJsonMetadata(
 ): Promise<any> {
     return chunkManager.memoize.getUncounted(
         {
-            type: "precomputed:metadata",
+            type: "trk:metadata",
             url,
             credentialsProvider: getObjectId(credentialsProvider),
         },
@@ -456,7 +456,7 @@ function parseInlinePropertyMap(data: unknown): InlineSegmentPropertyMap {
     return normalizeInlineSegmentPropertyMap({ ids, properties });
 }
 
-export const PrecomputedIndexedSegmentPropertySource = WithParameters(
+export const trkIndexedSegmentPropertySource = WithParameters(
     WithCredentialsProvider<SpecialProtocolCredentials>()(
         IndexedSegmentPropertySource,
     ),
@@ -487,7 +487,7 @@ export function getSegmentPropertyMap(
         // const indexedProperties = verifyOptionalObjectProperty(data, 'indexed', indexedObj => {
         //   const {sharding, properties} = parseIndexedPropertyMap(indexedObj);
         //   return chunkManager.getChunkSource(
-        //       PrecomputedIndexedSegmentPropertySource,
+        //       trkIndexedSegmentPropertySource,
         //       {credentialsProvider, properties, parameters: {sharding, url}});
         // });
         return new SegmentPropertyMap({ inlineProperties });
@@ -558,7 +558,7 @@ export class TrkDataSource extends DataSourceProvider {
             options.providerUrl,
         );
         return options.chunkManager.memoize.getUncounted(
-            { type: "precomputed:get", providerUrl, parameters },
+            { type: "trk:get", providerUrl, parameters },
             async (): Promise<DataSource> => {
                 const { url, credentialsProvider } = parseSpecialUrl(
                     providerUrl,
