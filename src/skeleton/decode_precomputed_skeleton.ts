@@ -24,14 +24,21 @@ import {
   Endianness,
 } from "#src/util/endian.js";
 
+console.log(import.meta.url);
+
 export function decodeSkeletonChunk(
   chunk: SkeletonChunk,
   response: ArrayBuffer,
   vertexAttributes: Map<string, VertexAttributeInfo>,
 ) {
+
+  console.log("start of decode vertices and edges")
+
   const dv = new DataView(response);
   const numVertices = dv.getUint32(0, true);
+  console.log(numVertices);
   const numEdges = dv.getUint32(4, true);
+  console.log(numEdges);
 
   const vertexPositionsStartOffset = 8;
 
