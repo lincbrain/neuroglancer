@@ -199,6 +199,7 @@ class StaticPathHandler(BaseRequestHandler):
             query = self.request.query
             if query:
                 query = f"?{query}"
+                # Aaron
             data, content_type = global_static_content_source.get(path, query)
         except ValueError as e:
             self.send_error(404, message=e.args[0])

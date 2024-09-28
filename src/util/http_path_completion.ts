@@ -77,7 +77,6 @@ export async function getHtmlPathCompletions(
   cancellationToken: CancellationToken,
   credentialsProvider?: SpecialProtocolCredentialsProvider,
 ): Promise<BasicCompletionResult> {
-  console.log("getHtmlPathCompletions");
   const m = url.match(/^([a-z]+:\/\/.*\/)([^/?#]*)$/);
   if (m === null) throw null;
   const entries = await getHtmlDirectoryListing(
@@ -183,13 +182,17 @@ export async function completeHttpPath(
         cancellationToken,
       );
     }
-    if ((protocol === "http" || protocol === "https") && path.length > 0) {
-      return await getHtmlPathCompletions(
-        parsedUrl,
-        cancellationToken,
-        credentialsProvider,
-      );
+    // Catch all for CloudFront neuroglancer
+    if (protocol === "https" && path.length > 0) {
+      return await getS3PathCompletions(host, path, cancellationToken);
     }
+    // if (protocol === "https" && path.length > 0) {
+    //   return await getHtmlPathCompletions(
+    //     parsedUrl,
+    //     cancellationToken,
+    //     credentialsProvider,
+    //   );
+    // }
     throw null;
   })();
   return {
