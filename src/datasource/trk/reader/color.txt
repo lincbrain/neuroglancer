@@ -1,0 +1,34 @@
+/**
+ * Converts a 3D orientation vector into a color map based on the absolute values of its components.
+ * Each component of the orientation vector corresponds to a color channel (R, G, B),
+ * which is then clamped between 0.0 and 1.0 to ensure valid color values.
+ *
+ * @param {vec3} orient - The orientation vector whose components are used to determine the color.
+ * @returns {vec3} A color vector where each component is derived from the corresponding component of the orientation vector.
+ */
+
+vec3 colormapOrient(vec3 orient){
+  vec3 result;
+  result.r = abs(orient[0]);
+  result.g = abs(orient[1]);
+  result.b = abs(orient[2]);
+  return clamp(result, 0.0, 1.0);
+  	
+  
+}
+
+/**
+ * Main rendering function for a shader that adjusts the output color based on the orientation.
+ * The function checks if the orientation-based coloring is enabled (through a UI control),
+ * and if so, it uses the `colormapOrient` function to determine the color based on the orientation.
+ * If not enabled, it emits a default color or style.
+ */
+#uicontrol bool orient_color checkbox(default=true)
+void main() {
+  if(orient_color){
+	emitRGB(colormapOrient(orientation));
+  }
+  else{
+  	emitDefault();
+  }
+}
