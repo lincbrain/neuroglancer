@@ -32,13 +32,13 @@ import type {
 } from "#src/datasource/index.js";
 import { DataSourceProvider, RedirectError } from "#src/datasource/index.js";
 import type {
-    ShardingParameters,
+    // ShardingParameters,
     SkeletonMetadata,
 } from "#src/datasource/trk/base.js";
 import {
-    DataEncoding,
-    IndexedSegmentPropertySourceParameters,
-    ShardingHashFunction,
+    // DataEncoding,
+    // IndexedSegmentPropertySourceParameters,
+    // ShardingHashFunction,
     SkeletonSourceParameters,
 } from "#src/datasource/trk/base.js";
 import type {
@@ -46,7 +46,7 @@ import type {
     InlineSegmentPropertyMap,
 } from "#src/segmentation_display_state/property_map.js";
 import {
-    IndexedSegmentPropertySource,
+    // IndexedSegmentPropertySource,
     normalizeInlineSegmentPropertyMap,
     SegmentPropertyMap,
 } from "#src/segmentation_display_state/property_map.js";
@@ -65,7 +65,7 @@ import {
     unparseQueryStringParameters,
     verifyEnumString,
     verifyFiniteFloat,
-    verifyInt,
+    // verifyInt,
     verifyObject,
     verifyObjectProperty,
     verifyOptionalObjectProperty,
@@ -128,53 +128,53 @@ function parseTransform(data: any): mat4 {
     });
 }
 
-function parseShardingEncoding(y: any): DataEncoding {
-    if (y === undefined) return DataEncoding.RAW;
-    return verifyEnumString(y, DataEncoding);
-}
+// function parseShardingEncoding(y: any): DataEncoding {
+//     if (y === undefined) return DataEncoding.RAW;
+//     return verifyEnumString(y, DataEncoding);
+// }
 
-function parseShardingParameters(
-    shardingData: any,
-): ShardingParameters | undefined {
-    if (shardingData === undefined) return undefined;
-    verifyObject(shardingData);
-    const t = verifyObjectProperty(shardingData, "@type", verifyString);
-    if (t !== "neuroglancer_uint64_sharded_v1") {
-        throw new Error(`Unsupported sharding format: ${JSON.stringify(t)}`);
-    }
-    const hash = verifyObjectProperty(shardingData, "hash", (y) =>
-        verifyEnumString(y, ShardingHashFunction),
-    );
-    const preshiftBits = verifyObjectProperty(
-        shardingData,
-        "preshift_bits",
-        verifyInt,
-    );
-    const shardBits = verifyObjectProperty(shardingData, "shard_bits", verifyInt);
-    const minishardBits = verifyObjectProperty(
-        shardingData,
-        "minishard_bits",
-        verifyInt,
-    );
-    const minishardIndexEncoding = verifyObjectProperty(
-        shardingData,
-        "minishard_index_encoding",
-        parseShardingEncoding,
-    );
-    const dataEncoding = verifyObjectProperty(
-        shardingData,
-        "data_encoding",
-        parseShardingEncoding,
-    );
-    return {
-        hash,
-        preshiftBits,
-        shardBits,
-        minishardBits,
-        minishardIndexEncoding,
-        dataEncoding,
-    };
-}
+// function parseShardingParameters(
+//     shardingData: any,
+// ): ShardingParameters | undefined {
+//     if (shardingData === undefined) return undefined;
+//     verifyObject(shardingData);
+//     const t = verifyObjectProperty(shardingData, "@type", verifyString);
+//     if (t !== "neuroglancer_uint64_sharded_v1") {
+//         throw new Error(`Unsupported sharding format: ${JSON.stringify(t)}`);
+//     }
+//     const hash = verifyObjectProperty(shardingData, "hash", (y) =>
+//         verifyEnumString(y, ShardingHashFunction),
+//     );
+//     const preshiftBits = verifyObjectProperty(
+//         shardingData,
+//         "preshift_bits",
+//         verifyInt,
+//     );
+//     const shardBits = verifyObjectProperty(shardingData, "shard_bits", verifyInt);
+//     const minishardBits = verifyObjectProperty(
+//         shardingData,
+//         "minishard_bits",
+//         verifyInt,
+//     );
+//     const minishardIndexEncoding = verifyObjectProperty(
+//         shardingData,
+//         "minishard_index_encoding",
+//         parseShardingEncoding,
+//     );
+//     const dataEncoding = verifyObjectProperty(
+//         shardingData,
+//         "data_encoding",
+//         parseShardingEncoding,
+//     );
+//     return {
+//         hash,
+//         preshiftBits,
+//         shardBits,
+//         minishardBits,
+//         minishardIndexEncoding,
+//         dataEncoding,
+//     };
+// }
 
 interface ParsedSkeletonMetadata {
     metadata: SkeletonMetadata;
@@ -209,18 +209,20 @@ function parseSkeletonMetadata(data: any): ParsedSkeletonMetadata {
             vertexAttributes.set(id, { dataType, numComponents });
         });
     });
-    const sharding = verifyObjectProperty(
-        data,
-        "sharding",
-        parseShardingParameters,
-    );
+    // const sharding = verifyObjectProperty(
+    //     data,
+    //     "sharding",
+    //     parseShardingParameters,
+    // );
     const segmentPropertyMap = verifyObjectProperty(
         data,
         "segment_properties",
         verifyOptionalString,
     );
     return {
-        metadata: { transform, vertexAttributes, sharding } as SkeletonMetadata,
+        metadata: { transform, vertexAttributes, 
+            // sharding 
+        } as SkeletonMetadata,
         segmentPropertyMap,
     };
 }
@@ -456,12 +458,12 @@ function parseInlinePropertyMap(data: unknown): InlineSegmentPropertyMap {
     return normalizeInlineSegmentPropertyMap({ ids, properties });
 }
 
-export const trkIndexedSegmentPropertySource = WithParameters(
-    WithCredentialsProvider<SpecialProtocolCredentials>()(
-        IndexedSegmentPropertySource,
-    ),
-    IndexedSegmentPropertySourceParameters,
-);
+// export const trkIndexedSegmentPropertySource = WithParameters(
+//     WithCredentialsProvider<SpecialProtocolCredentials>()(
+//         IndexedSegmentPropertySource,
+//     ),
+//     IndexedSegmentPropertySourceParameters,
+// );
 
 export function getSegmentPropertyMap(
     chunkManager: Borrowed<ChunkManager>,
@@ -547,7 +549,8 @@ export class TrkDataSource extends DataSourceProvider {
     }
 
     normalizeUrl(options: NormalizeUrlOptions): string {
-        const { url, parameters } = parseProviderUrl(options.providerUrl);
+        const { url, parameters } =
+         parseProviderUrl(options.providerUrl);
         return (
             options.providerProtocol + "://" + unparseProviderUrl(url, parameters)
         );

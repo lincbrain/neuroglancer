@@ -27,19 +27,19 @@ export enum ShardingHashFunction {
   MURMURHASH3_X86_128 = 1,
 }
 
-export interface ShardingParameters {
-  hash: ShardingHashFunction;
-  preshiftBits: number;
-  minishardBits: number;
-  shardBits: number;
-  minishardIndexEncoding: DataEncoding;
-  dataEncoding: DataEncoding;
-}
+// export interface ShardingParameters {
+//   hash: ShardingHashFunction;
+//   preshiftBits: number;
+//   minishardBits: number;
+//   shardBits: number;
+//   minishardIndexEncoding: DataEncoding;
+//   dataEncoding: DataEncoding;
+// }
 
 export interface SkeletonMetadata {
   transform: mat4;
   vertexAttributes: Map<string, VertexAttributeInfo>;
-  sharding: ShardingParameters | undefined;
+  // sharding: ShardingParameters | undefined;
 }
 
 export class SkeletonSourceParameters {
@@ -50,8 +50,8 @@ export class SkeletonSourceParameters {
 }
 
 
-export class IndexedSegmentPropertySourceParameters {
-  url: string;
-  sharding: ShardingParameters | undefined;
-  static RPC_ID = "trk/IndexedSegmentPropertySource";
-}
+// export class IndexedSegmentPropertySourceParameters {
+//   url: string;
+//   sharding: ShardingParameters | undefined;
+//   static RPC_ID = "trk/IndexedSegmentPropertySource";
+// }
