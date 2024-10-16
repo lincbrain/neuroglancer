@@ -28,7 +28,7 @@ import type {
     DataSource,
     DataSubsourceEntry,
     GetDataSourceOptions,
-    NormalizeUrlOptions,
+    // NormalizeUrlOptions,
 } from "#src/datasource/index.js";
 import { DataSourceProvider, RedirectError } from "#src/datasource/index.js";
 import type {
@@ -41,6 +41,7 @@ import {
     // ShardingHashFunction,
     SkeletonSourceParameters,
 } from "#src/datasource/trk/base.js";
+import { TrackProcessor } from "#src/datasource/trk/reader/trackProcessor.js";
 import type {
     InlineSegmentProperty,
     InlineSegmentPropertyMap,
@@ -57,7 +58,7 @@ import { DATA_TYPE_ARRAY_CONSTRUCTOR, DataType } from "#src/util/data_type.js";
 import type { Borrowed } from "#src/util/disposable.js";
 import { mat4 } from "#src/util/geom.js";
 import { completeHttpPath } from "#src/util/http_path_completion.js";
-import { responseJson } from "#src/util/http_request.js";
+// import { responseJson } from "#src/util/http_request.js";
 import {
     parseArray,
     parseFixedLengthArray,
@@ -74,13 +75,13 @@ import {
     verifyString,
     verifyStringArray,
 } from "#src/util/json.js";
-import { getObjectId } from "#src/util/object_id.js";
+// import { getObjectId } from "#src/util/object_id.js";
 import type {
     SpecialProtocolCredentials,
     SpecialProtocolCredentialsProvider,
 } from "#src/util/special_protocol_request.js";
 import {
-    cancellableFetchSpecialOk,
+    // cancellableFetchSpecialOk,
     parseSpecialUrl,
 } from "#src/util/special_protocol_request.js";
 import { Uint64 } from "#src/util/uint64.js";
@@ -95,23 +96,24 @@ class trkSkeletonSource extends WithParameters(
         return false;
     }
     get vertexAttributes() {
+        console.log(this.parameters.metadata.vertexAttributes);
         return this.parameters.metadata.vertexAttributes;
     }
 }
 
-export function resolvePath(a: string, b: string) {
-    const outputParts = a.split("/");
-    for (const part of b.split("/")) {
-        if (part === "..") {
-            if (outputParts.length !== 0) {
-                outputParts.length = outputParts.length - 1;
-                continue;
-            }
-        }
-        outputParts.push(part);
-    }
-    return outputParts.join("/");
-}
+// export function resolvePath(a: string, b: string) {
+//     const outputParts = a.split("/");
+//     for (const part of b.split("/")) {
+//         if (part === "..") {
+//             if (outputParts.length !== 0) {
+//                 outputParts.length = outputParts.length - 1;
+//                 continue;
+//             }
+//         }
+//         outputParts.push(part);
+//     }
+//     return outputParts.join("/");
+// }
 
 function parseTransform(data: any): mat4 {
     return verifyObjectProperty(data, "transform", (value) => {
@@ -220,7 +222,8 @@ function parseSkeletonMetadata(data: any): ParsedSkeletonMetadata {
         verifyOptionalString,
     );
     return {
-        metadata: { transform, vertexAttributes, 
+        metadata: {
+            transform, vertexAttributes,
             // sharding 
         } as SkeletonMetadata,
         segmentPropertyMap,
@@ -228,15 +231,16 @@ function parseSkeletonMetadata(data: any): ParsedSkeletonMetadata {
 }
 
 async function getSkeletonMetadata(
-    chunkManager: ChunkManager,
-    credentialsProvider: SpecialProtocolCredentialsProvider,
-    url: string,
+    // chunkManager: ChunkManager,
+    // credentialsProvider: SpecialProtocolCredentialsProvider,
+    // url: string,
 ): Promise<ParsedSkeletonMetadata> {
-    const metadata = await getJsonMetadata(
-        chunkManager,
-        credentialsProvider,
-        url,
-    );
+    // const metadata = await getJsonMetadata(
+    //     chunkManager,
+    //     credentialsProvider,
+    //     url,
+    // );
+    const metadata = await getMetadata();
     return parseSkeletonMetadata(metadata);
 }
 
@@ -254,9 +258,9 @@ async function getSkeletonSource(
     url: string,
 ) {
     const { metadata, segmentPropertyMap } = await getSkeletonMetadata(
-        chunkManager,
-        credentialsProvider,
-        url,
+        // chunkManager,
+        // credentialsProvider,
+        // url,
     );
     return {
         source: chunkManager.getChunkSource(trkSkeletonSource, {
@@ -271,26 +275,60 @@ async function getSkeletonSource(
     };
 }
 
-function getJsonMetadata(
-    chunkManager: ChunkManager,
-    credentialsProvider: SpecialProtocolCredentialsProvider,
-    url: string,
-): Promise<any> {
-    return chunkManager.memoize.getUncounted(
-        {
-            type: "trk:metadata",
-            url,
-            credentialsProvider: getObjectId(credentialsProvider),
-        },
-        async () => {
-            return await cancellableFetchSpecialOk(
-                credentialsProvider,
-                `${url}/info`,
-                {},
-                responseJson,
-            );
-        },
-    );
+// function getJsonMetadata(
+//     chunkManager: ChunkManager,
+//     credentialsProvider: SpecialProtocolCredentialsProvider,
+//     url: string,
+// ): Promise<any> {
+//     return chunkManager.memoize.getUncounted(
+//         {
+//             type: "trk:metadata",
+//             url,
+//             credentialsProvider: getObjectId(credentialsProvider),
+//         },
+//         async () => {
+//             return await cancellableFetchSpecialOk(
+//                 credentialsProvider,
+//                 `${url}/info`,
+//                 {},
+//                 responseJson,
+//             );
+//         },
+//     );
+// }
+
+function getMetadata(){
+    return {
+        "@type": "neuroglancer_skeletons",
+        "vertex_attributes": [
+          {
+            "id": "orientation",
+            "data_type": "float32",
+            "num_components": 3
+          }
+        ],
+        "segment_properties": "prop"
+      };
+}
+
+function getPropMetadata(){
+    return {
+        "@type": "neuroglancer_segment_properties",
+        "inline": {
+          "ids": [
+            "1"
+          ],
+          "properties": [
+            {
+              "id": "label",
+              "type": "label",
+              "values": [
+                "1"
+              ]
+            }
+          ]
+        }
+      };
 }
 
 async function getSkeletonsDataSource(
@@ -312,17 +350,18 @@ async function getSkeletonsDataSource(
         },
     ];
     if (segmentPropertyMap !== undefined) {
-        const mapUrl = resolvePath(url, segmentPropertyMap);
-        const metadata = await getJsonMetadata(
-            options.chunkManager,
-            credentialsProvider,
-            mapUrl,
-        );
+        // const mapUrl = resolvePath(url, segmentPropertyMap);
+        // const metadata = await getJsonMetadata(
+        //     options.chunkManager,
+        //     credentialsProvider,
+        //     mapUrl,
+        // );
+        const metadata = await getPropMetadata();
         const segmentPropertyMapData = getSegmentPropertyMap(
             options.chunkManager,
             credentialsProvider,
             metadata,
-            mapUrl,
+            // mapUrl,
         );
         subsources.push({
             id: "properties",
@@ -469,11 +508,11 @@ export function getSegmentPropertyMap(
     chunkManager: Borrowed<ChunkManager>,
     credentialsProvider: SpecialProtocolCredentialsProvider,
     data: unknown,
-    url: string,
+    // url: string,
 ): SegmentPropertyMap {
     chunkManager;
     credentialsProvider;
-    url;
+    // url;
     try {
         const t = verifyObjectProperty(data, "@type", verifyString);
         if (t !== "neuroglancer_segment_properties") {
@@ -501,7 +540,7 @@ export function getSegmentPropertyMap(
 async function getSegmentPropertyMapDataSource(
     options: GetDataSourceOptions,
     credentialsProvider: SpecialProtocolCredentialsProvider,
-    url: string,
+    // url: string,
     metadata: unknown,
 ): Promise<DataSource> {
     options;
@@ -516,7 +555,7 @@ async function getSegmentPropertyMapDataSource(
                         options.chunkManager,
                         credentialsProvider,
                         metadata,
-                        url,
+                        // url,
                     ),
                 },
             },
@@ -548,13 +587,13 @@ export class TrkDataSource extends DataSourceProvider {
         return "Single trk file";
     }
 
-    normalizeUrl(options: NormalizeUrlOptions): string {
-        const { url, parameters } =
-         parseProviderUrl(options.providerUrl);
-        return (
-            options.providerProtocol + "://" + unparseProviderUrl(url, parameters)
-        );
-    }
+    // normalizeUrl(options: NormalizeUrlOptions): string {
+    //     const { url, parameters } =
+    //         parseProviderUrl(options.providerUrl);
+    //     return (
+    //         options.providerProtocol + "://" + unparseProviderUrl(url, parameters)
+    //     );
+    // }
 
     get(options: GetDataSourceOptions): Promise<DataSource> {
         const { url: providerUrl, parameters } = parseProviderUrl(
@@ -567,26 +606,66 @@ export class TrkDataSource extends DataSourceProvider {
                     providerUrl,
                     options.credentialsManager,
                 );
+
+                // Logging the URL to the console
+                console.log("TRK file URL:", url);
+
+                const trackProcessor = new TrackProcessor();
+
+                await trackProcessor.streamAndProcessHeader(url, 0, 999);
+                if (!trackProcessor.globalHeader) {
+                    console.error('Error: Failed to fetch or process the TRK header.');
+                    
+                }
+
+                const totalTracks = trackProcessor.globalHeader?.n_count;
+                if (totalTracks !== undefined) {
+                    const randomTrackNumbers = trackProcessor.getRandomTrackIndices(totalTracks, 1000);
+                    await trackProcessor.processTrackData(randomTrackNumbers, 1, url);
+                } else {
+                    console.error("totalTracks is undefined. Cannot proceed.");
+                }
+
+
                 let metadata: any;
                 try {
-                    metadata = await getJsonMetadata(
-                      options.chunkManager,
-                      credentialsProvider,
-                      url,
-                    );
-                  } catch (e) {
+                    // metadata = await getJsonMetadata(
+                    //     options.chunkManager,
+                    //     credentialsProvider,
+                    //     'http://127.0.0.1:9123/Users/shrutiv/MyDocuments/GitHub/Neuroglancer-Tractography/src/tract/20240920_163900',
+                    // );
+                    metadata = await getMetadata();
+                } catch (e) {
                     throw new Error(`Failed to get metadata for ${url}: ${e}`);
-                  }
+                }
+
+
+                // const metadata = {
+                //     "@type": "neuroglancer_skeletons",
+                //     "vertex_attributes": [
+                //       {
+                //         "id": "orientation",
+                //         "data_type": "float32",
+                //         "num_components": 3
+                //       }
+                //     ],
+                //     "segment_properties": "prop"
+                //   };
+
                 verifyObject(metadata);
+
                 const redirect = verifyOptionalObjectProperty(
                     metadata,
                     "redirect",
                     verifyString,
                 );
+
                 if (redirect !== undefined) {
                     throw new RedirectError(redirect);
                 }
                 const t = verifyOptionalObjectProperty(metadata, "@type", verifyString);
+
+                
                 switch (t) {
                     case "neuroglancer_skeletons":
                         return await getSkeletonsDataSource(
@@ -599,7 +678,7 @@ export class TrkDataSource extends DataSourceProvider {
                         return await getSegmentPropertyMapDataSource(
                             options,
                             credentialsProvider,
-                            url,
+                            // url,
                             metadata,
                         );
 
@@ -609,6 +688,7 @@ export class TrkDataSource extends DataSourceProvider {
             },
         );
     }
+    
     completeUrl(options: CompleteUrlOptions) {
         return completeHttpPath(
             options.credentialsManager,
