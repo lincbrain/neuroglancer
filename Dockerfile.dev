@@ -16,10 +16,10 @@ RUN npm install
 COPY . .
 
 # Install project dependencies
-# RUN npm i
+RUN npm i
 
 # Vue CLI serves on port 8080 by default, expose that port
-# EXPOSE 8080
+EXPOSE 8080
 
 # Command to run the app using npm
-# CMD ["npm", "run", "dev-server"]
+CMD ["npm", "run", "dev-server"]
