@@ -17,6 +17,7 @@
 import type { VertexAttributeInfo } from "#src/skeleton/base.js";
 import type { mat4 } from "#src/util/geom.js";
 
+
 export enum DataEncoding {
   RAW = 0,
   GZIP = 1,
@@ -27,31 +28,14 @@ export enum ShardingHashFunction {
   MURMURHASH3_X86_128 = 1,
 }
 
-// export interface ShardingParameters {
-//   hash: ShardingHashFunction;
-//   preshiftBits: number;
-//   minishardBits: number;
-//   shardBits: number;
-//   minishardIndexEncoding: DataEncoding;
-//   dataEncoding: DataEncoding;
-// }
-
 export interface SkeletonMetadata {
   transform: mat4;
   vertexAttributes: Map<string, VertexAttributeInfo>;
-  // sharding: ShardingParameters | undefined;
 }
 
 export class SkeletonSourceParameters {
   url: string;
   metadata: SkeletonMetadata;
-
+  skeletonBuffer: ArrayBuffer;
   static RPC_ID = "trk/SkeletonSource";
 }
-
-
-// export class IndexedSegmentPropertySourceParameters {
-//   url: string;
-//   sharding: ShardingParameters | undefined;
-//   static RPC_ID = "trk/IndexedSegmentPropertySource";
-// }

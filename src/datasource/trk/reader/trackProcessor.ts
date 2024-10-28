@@ -1,10 +1,10 @@
+
+import { Buffer } from 'buffer';
 // import fs from 'fs';
 // import path from 'path';
-import { Buffer } from 'buffer';
 import axios from 'axios';
-import type { Vertex, Edge } from '#src/datasource/trk/reader/skeletonWriter.js';
-// import { SkeletonWriter } from '#src/datasource/trk/reader/skeletonWriter.js';
-import type { TrkHeader} from '#src/datasource/trk/reader/trkHeader.js';
+import { type Vertex, type Edge, SkeletonWriter } from '#src/datasource/trk/reader/skeletonWriter.js';
+import type { TrkHeader } from '#src/datasource/trk/reader/trkHeader.js';
 import { TrkHeaderProcessor } from '#src/datasource/trk/reader/trkHeader.js';
 import { VoxelToRASConverter } from '#src/datasource/trk/reader/voxelToRASConverter.js';
 
@@ -111,8 +111,8 @@ export class TrackProcessor {
      * @param {string} filePath - The file path of the TRK file.
      * @returns {Promise<{processState: ProcessState; timestamp: string}>} A promise that resolves to the processing state and a timestamp.
      */
-    async processTrackData( randomTrackNumbers: number[], trackNumber: number, filePath: string): Promise<{ processState: ProcessState; timestamp: string }> {
-        
+    async processTrackData(randomTrackNumbers: number[], trackNumber: number, filePath: string): Promise<{ processState: ProcessState; timestamp: string, arrayBuffer?: ArrayBuffer }> {
+
         // Get the current date and time
         const now = new Date();
 
@@ -122,11 +122,8 @@ export class TrackProcessor {
 
         if (!this.globalHeader) {
             console.error('Error: Global header is not initialized.');
-            return  { processState: { byteOffset: 0, trackNumber, offset: 0 }, timestamp };
+            return { processState: { byteOffset: 0, trackNumber, offset: 0 }, timestamp };
         }
-
-        // const outputFilePath = path.join(__dirname, 'track_data.txt');
-        // const writeStream = fs.createWriteStream(outputFilePath, { flags: 'a' });
 
         const maxTracksToProcess = randomTrackNumbers.length;
         const vertices: Vertex[] = [];
@@ -148,14 +145,12 @@ export class TrackProcessor {
                 const n_points = dataView.getInt32(offset, true); // true indicates little-endian byte order.
                 offset += 4;
 
-                // writeStream.write(`Track ${trackNumber} processed, number of points: ${n_points}\n`);
-
                 // console.log(`Track ${trackNumber} processed, number of points: ${n_points}\n`);
 
                 // Only process the track if it is in the random track numbers
                 if (randomTrackNumbers.includes(trackNumber)) {
                     // Process each point in the track (x, y, z -> 12 bytes per point)
-                    console.log(`Track ${trackNumber}`);
+                    // console.log(`Track ${trackNumber}`);
                     const points: number[][] = [];
                     for (let i = 0; i < n_points; i++) {
                         const x = dataView.getFloat32(offset, true);
@@ -185,22 +180,29 @@ export class TrackProcessor {
 
                     trackProcessedCount++; // Increment the number of processed tracks
 
-                    // if (trackProcessedCount >= maxTracksToProcess) {
-                    //     const outputDirectory = path.resolve(__dirname, '..', 'src');
-                    //     const { binaryFilePath, propInfoFilePath, skeletonInfoFilePath } = SkeletonWriter.generateSkeletonFilePaths(outputDirectory, timestamp);
+                    if (trackProcessedCount >= maxTracksToProcess) {
+                        //     const outputDirectory = path.resolve(__dirname, '..', 'src');
+                        //     const { binaryFilePath, propInfoFilePath, skeletonInfoFilePath } = SkeletonWriter.generateSkeletonFilePaths(outputDirectory, timestamp);
+                        //     SkeletonWriter.writeSkeleton(vertices, edges, orientations, binaryFilePath);
+                        //     SkeletonWriter.writePropInfo(propInfoFilePath);
+                        //     SkeletonWriter.writeSkeletonInfo(skeletonInfoFilePath);
+                        //     console.log(`Processed ${maxTracksToProcess} random tracks and wrote skeleton and info files.`);
+                        //     // SkeletonWriter.uploadSkeletonFilePathsToS3(outputDirectory, timestamp);
+                        //     console.log(`Uploaded tracks to S3.`)
 
-                    //     SkeletonWriter.writeSkeleton(vertices, edges, orientations, binaryFilePath);
-                    //     SkeletonWriter.writePropInfo(propInfoFilePath);
-                    //     SkeletonWriter.writeSkeletonInfo(skeletonInfoFilePath);
 
-                    //     console.log(`Processed ${maxTracksToProcess} random tracks and wrote skeleton and info files.`);
 
-                    //     // SkeletonWriter.uploadSkeletonFilePathsToS3(outputDirectory, timestamp);
+                        // Create the ArrayBuffer
+                        const arrayBuffer = SkeletonWriter.createArrayBuffer(vertices, edges, orientations);
+                        console.log(arrayBuffer)
+                        // Return the state, timestamp, and arrayBuffer
+                        return { processState: { byteOffset: 0, trackNumber, offset: 0 }, timestamp, arrayBuffer };
 
-                    //     console.log(`Uploaded tracks to S3.`)
 
-                    //     break;
-                    // }
+                        // Send the ArrayBuffer to the backend
+                        // SkeletonWriter.sendArrayBufferToBackend(arrayBuffer, 'http://127.0.0.1:8080/data');
+
+                    }
                 } else {
                     offset += n_points * 12; // Skip the track data if it's not in the selected tracks
                 }
@@ -209,12 +211,12 @@ export class TrackProcessor {
             }
 
             // writeStream.end();
-            return  { processState: { byteOffset: 0, trackNumber, offset: 0 }, timestamp };
+            return { processState: { byteOffset: 0, trackNumber, offset: 0 }, timestamp };
 
         } catch (error) {
 
             console.error('Error fetching or processing track data:', error);
-            return  { processState: { byteOffset: 0, trackNumber, offset: 0 }, timestamp };
+            return { processState: { byteOffset: 0, trackNumber, offset: 0 }, timestamp };
 
         }
     }
@@ -241,21 +243,21 @@ export class TrackProcessor {
      */
     loadFileBuffer(filePath: string) {
         // if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-            // Handle URL loading with axios
-            return axios.get(filePath, { responseType: 'arraybuffer' })
-                .then(response => {
-                    const buffer = Buffer.from(response.data);
-                    const dataView = new DataView(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength));
-                    console.log('Data loaded from URL successfully.');
-                    return {
-                        dataView,
-                        buffer
-                    };
-                })
-                .catch(error => {
-                    console.error('Failed to load file from URL:', error);
-                    throw error;
-                });
+        // Handle URL loading with axios
+        return axios.get(filePath, { responseType: 'arraybuffer' })
+            .then(response => {
+                const buffer = Buffer.from(response.data);
+                const dataView = new DataView(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength));
+                console.log('Data loaded from URL successfully.');
+                return {
+                    dataView,
+                    buffer
+                };
+            })
+            .catch(error => {
+                console.error('Failed to load file from URL:', error);
+                throw error;
+            });
         // } else {
         //     // Handle local file loading with fs
         //     try {

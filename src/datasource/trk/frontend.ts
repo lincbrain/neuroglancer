@@ -28,17 +28,12 @@ import type {
     DataSource,
     DataSubsourceEntry,
     GetDataSourceOptions,
-    // NormalizeUrlOptions,
 } from "#src/datasource/index.js";
 import { DataSourceProvider, RedirectError } from "#src/datasource/index.js";
 import type {
-    // ShardingParameters,
     SkeletonMetadata,
 } from "#src/datasource/trk/base.js";
 import {
-    // DataEncoding,
-    // IndexedSegmentPropertySourceParameters,
-    // ShardingHashFunction,
     SkeletonSourceParameters,
 } from "#src/datasource/trk/base.js";
 import { TrackProcessor } from "#src/datasource/trk/reader/trackProcessor.js";
@@ -47,7 +42,6 @@ import type {
     InlineSegmentPropertyMap,
 } from "#src/segmentation_display_state/property_map.js";
 import {
-    // IndexedSegmentPropertySource,
     normalizeInlineSegmentPropertyMap,
     SegmentPropertyMap,
 } from "#src/segmentation_display_state/property_map.js";
@@ -58,7 +52,6 @@ import { DATA_TYPE_ARRAY_CONSTRUCTOR, DataType } from "#src/util/data_type.js";
 import type { Borrowed } from "#src/util/disposable.js";
 import { mat4 } from "#src/util/geom.js";
 import { completeHttpPath } from "#src/util/http_path_completion.js";
-// import { responseJson } from "#src/util/http_request.js";
 import {
     parseArray,
     parseFixedLengthArray,
@@ -66,7 +59,6 @@ import {
     unparseQueryStringParameters,
     verifyEnumString,
     verifyFiniteFloat,
-    // verifyInt,
     verifyObject,
     verifyObjectProperty,
     verifyOptionalObjectProperty,
@@ -75,17 +67,14 @@ import {
     verifyString,
     verifyStringArray,
 } from "#src/util/json.js";
-// import { getObjectId } from "#src/util/object_id.js";
 import type {
     SpecialProtocolCredentials,
     SpecialProtocolCredentialsProvider,
 } from "#src/util/special_protocol_request.js";
 import {
-    // cancellableFetchSpecialOk,
     parseSpecialUrl,
 } from "#src/util/special_protocol_request.js";
 import { Uint64 } from "#src/util/uint64.js";
-
 
 
 class trkSkeletonSource extends WithParameters(
@@ -99,21 +88,11 @@ class trkSkeletonSource extends WithParameters(
         console.log(this.parameters.metadata.vertexAttributes);
         return this.parameters.metadata.vertexAttributes;
     }
-}
 
-// export function resolvePath(a: string, b: string) {
-//     const outputParts = a.split("/");
-//     for (const part of b.split("/")) {
-//         if (part === "..") {
-//             if (outputParts.length !== 0) {
-//                 outputParts.length = outputParts.length - 1;
-//                 continue;
-//             }
-//         }
-//         outputParts.push(part);
-//     }
-//     return outputParts.join("/");
-// }
+    // get skeleton() {
+    //     return this.parameters.binarydata.skeleton;
+    // }
+}
 
 function parseTransform(data: any): mat4 {
     return verifyObjectProperty(data, "transform", (value) => {
@@ -129,54 +108,6 @@ function parseTransform(data: any): mat4 {
         return transform;
     });
 }
-
-// function parseShardingEncoding(y: any): DataEncoding {
-//     if (y === undefined) return DataEncoding.RAW;
-//     return verifyEnumString(y, DataEncoding);
-// }
-
-// function parseShardingParameters(
-//     shardingData: any,
-// ): ShardingParameters | undefined {
-//     if (shardingData === undefined) return undefined;
-//     verifyObject(shardingData);
-//     const t = verifyObjectProperty(shardingData, "@type", verifyString);
-//     if (t !== "neuroglancer_uint64_sharded_v1") {
-//         throw new Error(`Unsupported sharding format: ${JSON.stringify(t)}`);
-//     }
-//     const hash = verifyObjectProperty(shardingData, "hash", (y) =>
-//         verifyEnumString(y, ShardingHashFunction),
-//     );
-//     const preshiftBits = verifyObjectProperty(
-//         shardingData,
-//         "preshift_bits",
-//         verifyInt,
-//     );
-//     const shardBits = verifyObjectProperty(shardingData, "shard_bits", verifyInt);
-//     const minishardBits = verifyObjectProperty(
-//         shardingData,
-//         "minishard_bits",
-//         verifyInt,
-//     );
-//     const minishardIndexEncoding = verifyObjectProperty(
-//         shardingData,
-//         "minishard_index_encoding",
-//         parseShardingEncoding,
-//     );
-//     const dataEncoding = verifyObjectProperty(
-//         shardingData,
-//         "data_encoding",
-//         parseShardingEncoding,
-//     );
-//     return {
-//         hash,
-//         preshiftBits,
-//         shardBits,
-//         minishardBits,
-//         minishardIndexEncoding,
-//         dataEncoding,
-//     };
-// }
 
 interface ParsedSkeletonMetadata {
     metadata: SkeletonMetadata;
@@ -230,16 +161,7 @@ function parseSkeletonMetadata(data: any): ParsedSkeletonMetadata {
     };
 }
 
-async function getSkeletonMetadata(
-    // chunkManager: ChunkManager,
-    // credentialsProvider: SpecialProtocolCredentialsProvider,
-    // url: string,
-): Promise<ParsedSkeletonMetadata> {
-    // const metadata = await getJsonMetadata(
-    //     chunkManager,
-    //     credentialsProvider,
-    //     url,
-    // );
+async function getSkeletonMetadata(): Promise<ParsedSkeletonMetadata> {
     const metadata = await getMetadata();
     return parseSkeletonMetadata(metadata);
 }
@@ -257,17 +179,16 @@ async function getSkeletonSource(
     credentialsProvider: SpecialProtocolCredentialsProvider,
     url: string,
 ) {
-    const { metadata, segmentPropertyMap } = await getSkeletonMetadata(
-        // chunkManager,
-        // credentialsProvider,
-        // url,
-    );
+    const { metadata, segmentPropertyMap } = await getSkeletonMetadata();
+    const skeletonBuffer = await getSkeletonBuffer(url)  ?? new ArrayBuffer(0);
+
     return {
         source: chunkManager.getChunkSource(trkSkeletonSource, {
             credentialsProvider,
             parameters: {
                 url,
                 metadata,
+                skeletonBuffer
             },
         }),
         transform: metadata.transform,
@@ -275,60 +196,63 @@ async function getSkeletonSource(
     };
 }
 
-// function getJsonMetadata(
-//     chunkManager: ChunkManager,
-//     credentialsProvider: SpecialProtocolCredentialsProvider,
-//     url: string,
-// ): Promise<any> {
-//     return chunkManager.memoize.getUncounted(
-//         {
-//             type: "trk:metadata",
-//             url,
-//             credentialsProvider: getObjectId(credentialsProvider),
-//         },
-//         async () => {
-//             return await cancellableFetchSpecialOk(
-//                 credentialsProvider,
-//                 `${url}/info`,
-//                 {},
-//                 responseJson,
-//             );
-//         },
-//     );
-// }
-
-function getMetadata(){
+function getMetadata() {
     return {
         "@type": "neuroglancer_skeletons",
         "vertex_attributes": [
-          {
-            "id": "orientation",
-            "data_type": "float32",
-            "num_components": 3
-          }
+            {
+                "id": "orientation",
+                "data_type": "float32",
+                "num_components": 3
+            }
         ],
         "segment_properties": "prop"
-      };
+    };
 }
 
-function getPropMetadata(){
+function getPropMetadata() {
     return {
         "@type": "neuroglancer_segment_properties",
         "inline": {
-          "ids": [
-            "1"
-          ],
-          "properties": [
-            {
-              "id": "label",
-              "type": "label",
-              "values": [
+            "ids": [
                 "1"
-              ]
-            }
-          ]
+            ],
+            "properties": [
+                {
+                    "id": "label",
+                    "type": "label",
+                    "values": [
+                        "1"
+                    ]
+                }
+            ]
         }
-      };
+    };
+}
+
+async function getSkeletonBuffer(url: string) {
+
+    const trackProcessor = new TrackProcessor();
+
+    await trackProcessor.streamAndProcessHeader(url, 0, 999);
+    // await trackProcessor.streamAndProcessHeader(url);
+    if (!trackProcessor.globalHeader) {
+        console.error('Error: Failed to fetch or process the TRK header.');
+
+    }
+
+    const totalTracks = trackProcessor.globalHeader?.n_count;
+    if (totalTracks !== undefined) {
+        const randomTrackNumbers = trackProcessor.getRandomTrackIndices(totalTracks, 1000);
+        const skeleton = await trackProcessor.processTrackData(randomTrackNumbers, 1, url);
+        console.log(skeleton.arrayBuffer);
+        return skeleton.arrayBuffer;
+
+    } else {
+        console.error("totalTracks is undefined. Cannot proceed.");
+        return new ArrayBuffer(0)
+    }
+
 }
 
 async function getSkeletonsDataSource(
@@ -350,18 +274,11 @@ async function getSkeletonsDataSource(
         },
     ];
     if (segmentPropertyMap !== undefined) {
-        // const mapUrl = resolvePath(url, segmentPropertyMap);
-        // const metadata = await getJsonMetadata(
-        //     options.chunkManager,
-        //     credentialsProvider,
-        //     mapUrl,
-        // );
         const metadata = await getPropMetadata();
         const segmentPropertyMapData = getSegmentPropertyMap(
             options.chunkManager,
             credentialsProvider,
             metadata,
-            // mapUrl,
         );
         subsources.push({
             id: "properties",
@@ -497,22 +414,13 @@ function parseInlinePropertyMap(data: unknown): InlineSegmentPropertyMap {
     return normalizeInlineSegmentPropertyMap({ ids, properties });
 }
 
-// export const trkIndexedSegmentPropertySource = WithParameters(
-//     WithCredentialsProvider<SpecialProtocolCredentials>()(
-//         IndexedSegmentPropertySource,
-//     ),
-//     IndexedSegmentPropertySourceParameters,
-// );
-
 export function getSegmentPropertyMap(
     chunkManager: Borrowed<ChunkManager>,
     credentialsProvider: SpecialProtocolCredentialsProvider,
     data: unknown,
-    // url: string,
 ): SegmentPropertyMap {
     chunkManager;
     credentialsProvider;
-    // url;
     try {
         const t = verifyObjectProperty(data, "@type", verifyString);
         if (t !== "neuroglancer_segment_properties") {
@@ -525,12 +433,6 @@ export function getSegmentPropertyMap(
             "inline",
             parseInlinePropertyMap,
         );
-        // const indexedProperties = verifyOptionalObjectProperty(data, 'indexed', indexedObj => {
-        //   const {sharding, properties} = parseIndexedPropertyMap(indexedObj);
-        //   return chunkManager.getChunkSource(
-        //       trkIndexedSegmentPropertySource,
-        //       {credentialsProvider, properties, parameters: {sharding, url}});
-        // });
         return new SegmentPropertyMap({ inlineProperties });
     } catch (e) {
         throw new Error(`Error parsing segment property map: ${e.message}`);
@@ -587,14 +489,6 @@ export class TrkDataSource extends DataSourceProvider {
         return "Single trk file";
     }
 
-    // normalizeUrl(options: NormalizeUrlOptions): string {
-    //     const { url, parameters } =
-    //         parseProviderUrl(options.providerUrl);
-    //     return (
-    //         options.providerProtocol + "://" + unparseProviderUrl(url, parameters)
-    //     );
-    // }
-
     get(options: GetDataSourceOptions): Promise<DataSource> {
         const { url: providerUrl, parameters } = parseProviderUrl(
             options.providerUrl,
@@ -607,50 +501,12 @@ export class TrkDataSource extends DataSourceProvider {
                     options.credentialsManager,
                 );
 
-                // Logging the URL to the console
-                console.log("TRK file URL:", url);
-
-                const trackProcessor = new TrackProcessor();
-
-                await trackProcessor.streamAndProcessHeader(url, 0, 999);
-                if (!trackProcessor.globalHeader) {
-                    console.error('Error: Failed to fetch or process the TRK header.');
-                    
-                }
-
-                const totalTracks = trackProcessor.globalHeader?.n_count;
-                if (totalTracks !== undefined) {
-                    const randomTrackNumbers = trackProcessor.getRandomTrackIndices(totalTracks, 1000);
-                    await trackProcessor.processTrackData(randomTrackNumbers, 1, url);
-                } else {
-                    console.error("totalTracks is undefined. Cannot proceed.");
-                }
-
-
                 let metadata: any;
                 try {
-                    // metadata = await getJsonMetadata(
-                    //     options.chunkManager,
-                    //     credentialsProvider,
-                    //     'http://127.0.0.1:9123/Users/shrutiv/MyDocuments/GitHub/Neuroglancer-Tractography/src/tract/20240920_163900',
-                    // );
                     metadata = await getMetadata();
                 } catch (e) {
                     throw new Error(`Failed to get metadata for ${url}: ${e}`);
                 }
-
-
-                // const metadata = {
-                //     "@type": "neuroglancer_skeletons",
-                //     "vertex_attributes": [
-                //       {
-                //         "id": "orientation",
-                //         "data_type": "float32",
-                //         "num_components": 3
-                //       }
-                //     ],
-                //     "segment_properties": "prop"
-                //   };
 
                 verifyObject(metadata);
 
@@ -665,7 +521,6 @@ export class TrkDataSource extends DataSourceProvider {
                 }
                 const t = verifyOptionalObjectProperty(metadata, "@type", verifyString);
 
-                
                 switch (t) {
                     case "neuroglancer_skeletons":
                         return await getSkeletonsDataSource(
@@ -688,7 +543,7 @@ export class TrkDataSource extends DataSourceProvider {
             },
         );
     }
-    
+
     completeUrl(options: CompleteUrlOptions) {
         return completeHttpPath(
             options.credentialsManager,

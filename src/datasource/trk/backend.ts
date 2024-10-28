@@ -387,7 +387,7 @@ export class trkSkeletonSource extends WithParameters(
         let response: AxiosResponse<any, any> | null = null;
 
         try {
-            response = await axios.get("http://127.0.0.1:9123/Users/shrutiv/MyDocuments/GitHub/Neuroglancer-Tractography/src/tract/20240920_163900/1",
+            response = await axios.get("http://127.0.0.1:9123/Users/shrutiv/MyDocuments/GitHub/Neuroglancer-Tractography/src/tract/20241028_161202/1",
                 { responseType: 'arraybuffer' });
 
             if (response && response.data) {
