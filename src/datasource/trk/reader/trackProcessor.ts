@@ -242,8 +242,7 @@ export class TrackProcessor {
      * @returns {Promise<{dataView: DataView; buffer: Buffer}>} A promise that resolves to the DataView and buffer of the file.
      */
     loadFileBuffer(filePath: string) {
-        // if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-        // Handle URL loading with axios
+        
         return axios.get(filePath, { responseType: 'arraybuffer' })
             .then(response => {
                 const buffer = Buffer.from(response.data);
@@ -258,22 +257,6 @@ export class TrackProcessor {
                 console.error('Failed to load file from URL:', error);
                 throw error;
             });
-        // } else {
-        //     // Handle local file loading with fs
-        //     try {
-        //         const absolutePath = path.resolve(filePath);
-        //         const buffer = fs.readFileSync(absolutePath);
-        //         const dataView = new DataView(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength));
-        //         console.log('Data loaded from local file successfully.');
-        //         return {
-        //             dataView,
-        //             buffer
-        //         };
-        //     } catch (error) {
-        //         console.error('Failed to load local file:', error);
-        //         throw error;
-        //     }
-        // }
     }
 
 }
