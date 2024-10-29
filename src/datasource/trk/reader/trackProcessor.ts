@@ -1,7 +1,5 @@
 
 import { Buffer } from 'buffer';
-// import fs from 'fs';
-// import path from 'path';
 import axios from 'axios';
 import { type Vertex, type Edge, SkeletonWriter } from '#src/datasource/trk/reader/skeletonWriter.js';
 import type { TrkHeader } from '#src/datasource/trk/reader/trkHeader.js';
@@ -150,7 +148,6 @@ export class TrackProcessor {
                 // Only process the track if it is in the random track numbers
                 if (randomTrackNumbers.includes(trackNumber)) {
                     // Process each point in the track (x, y, z -> 12 bytes per point)
-                    // console.log(`Track ${trackNumber}`);
                     const points: number[][] = [];
                     for (let i = 0; i < n_points; i++) {
                         const x = dataView.getFloat32(offset, true);
@@ -181,26 +178,12 @@ export class TrackProcessor {
                     trackProcessedCount++; // Increment the number of processed tracks
 
                     if (trackProcessedCount >= maxTracksToProcess) {
-                        //     const outputDirectory = path.resolve(__dirname, '..', 'src');
-                        //     const { binaryFilePath, propInfoFilePath, skeletonInfoFilePath } = SkeletonWriter.generateSkeletonFilePaths(outputDirectory, timestamp);
-                        //     SkeletonWriter.writeSkeleton(vertices, edges, orientations, binaryFilePath);
-                        //     SkeletonWriter.writePropInfo(propInfoFilePath);
-                        //     SkeletonWriter.writeSkeletonInfo(skeletonInfoFilePath);
-                        //     console.log(`Processed ${maxTracksToProcess} random tracks and wrote skeleton and info files.`);
-                        //     // SkeletonWriter.uploadSkeletonFilePathsToS3(outputDirectory, timestamp);
-                        //     console.log(`Uploaded tracks to S3.`)
-
-
 
                         // Create the ArrayBuffer
                         const arrayBuffer = SkeletonWriter.createArrayBuffer(vertices, edges, orientations);
                         console.log(arrayBuffer)
                         // Return the state, timestamp, and arrayBuffer
                         return { processState: { byteOffset: 0, trackNumber, offset: 0 }, timestamp, arrayBuffer };
-
-
-                        // Send the ArrayBuffer to the backend
-                        // SkeletonWriter.sendArrayBufferToBackend(arrayBuffer, 'http://127.0.0.1:8080/data');
 
                     }
                 } else {
