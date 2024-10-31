@@ -85,7 +85,6 @@ class trkSkeletonSource extends WithParameters(
         return false;
     }
     get vertexAttributes() {
-        console.log(this.parameters.metadata.vertexAttributes);
         return this.parameters.metadata.vertexAttributes;
     }
 
@@ -163,6 +162,7 @@ function parseSkeletonMetadata(data: any): ParsedSkeletonMetadata {
 
 async function getSkeletonMetadata(): Promise<ParsedSkeletonMetadata> {
     const metadata = await getMetadata();
+    console.log(metadata)
     return parseSkeletonMetadata(metadata);
 }
 
@@ -179,8 +179,9 @@ async function getSkeletonSource(
     credentialsProvider: SpecialProtocolCredentialsProvider,
     url: string,
 ) {
+
+    const skeletonBuffer = await getSkeletonBuffer(url);
     const { metadata, segmentPropertyMap } = await getSkeletonMetadata();
-    const skeletonBuffer = await getSkeletonBuffer(url)  ?? new ArrayBuffer(0);
 
     return {
         source: chunkManager.getChunkSource(trkSkeletonSource, {
@@ -196,19 +197,39 @@ async function getSkeletonSource(
     };
 }
 
+let globalHeader: any = null;
+
 function getMetadata() {
+    // Start with the default vertex attributes
+    const vertexAttributes = [
+        {
+            "id": "orientation",
+            "data_type": "float32",
+            "num_components": 3
+        }
+    ];
+
+    // Check if scalars are present in the globalHeader and add them as vertex attributes
+    if (globalHeader && globalHeader.scalar_name) {
+        for (const scalarName of globalHeader.scalar_name) {
+            if(scalarName != ''){
+                vertexAttributes.push({
+                    "id": scalarName,               // Use the scalar name as the ID
+                    "data_type": "float32",          // Assuming the scalar data type is float32
+                    "num_components": 1              // Each scalar is a single component
+                });
+            }
+            
+        }
+    }
+
     return {
         "@type": "neuroglancer_skeletons",
-        "vertex_attributes": [
-            {
-                "id": "orientation",
-                "data_type": "float32",
-                "num_components": 3
-            }
-        ],
+        "vertex_attributes": vertexAttributes,
         "segment_properties": "prop"
     };
 }
+
 
 function getPropMetadata() {
     return {
@@ -230,30 +251,32 @@ function getPropMetadata() {
     };
 }
 
-async function getSkeletonBuffer(url: string) {
-
+async function getSkeletonBuffer(url: string): Promise<ArrayBuffer> {
     const trackProcessor = new TrackProcessor();
-
     await trackProcessor.streamAndProcessHeader(url, 0, 999);
-    // await trackProcessor.streamAndProcessHeader(url);
+
     if (!trackProcessor.globalHeader) {
         console.error('Error: Failed to fetch or process the TRK header.');
-
+        return new ArrayBuffer(0);
     }
 
-    const totalTracks = trackProcessor.globalHeader?.n_count;
+    // Set globalHeader and process tracks
+    globalHeader = trackProcessor.globalHeader;
+    console.log(globalHeader);
+
+    const totalTracks = globalHeader?.n_count;
     if (totalTracks !== undefined) {
         const randomTrackNumbers = trackProcessor.getRandomTrackIndices(totalTracks, 1000);
-        const skeleton = await trackProcessor.processTrackData(randomTrackNumbers, 1, url);
-        console.log(skeleton.arrayBuffer);
-        return skeleton.arrayBuffer;
 
+        // Process track data and get the skeleton data in arrayBuffer format
+        const skeleton = await trackProcessor.processTrackData(randomTrackNumbers, 1, url);
+        return skeleton.arrayBuffer || new ArrayBuffer(0);  // Resolves only after processing all tracks
     } else {
         console.error("totalTracks is undefined. Cannot proceed.");
-        return new ArrayBuffer(0)
+        return new ArrayBuffer(0);
     }
-
 }
+
 
 async function getSkeletonsDataSource(
     options: GetDataSourceOptions,
@@ -504,6 +527,7 @@ export class TrkDataSource extends DataSourceProvider {
                 let metadata: any;
                 try {
                     metadata = await getMetadata();
+                    console.log(metadata)
                 } catch (e) {
                     throw new Error(`Failed to get metadata for ${url}: ${e}`);
                 }

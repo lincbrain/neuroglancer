@@ -54,7 +54,7 @@ export class TrackProcessor {
             });
             const buffer = Buffer.from(response.data);
             this.globalHeader = TrkHeaderProcessor.readTrkHeader(buffer);
-            TrkHeaderProcessor.printTrkHeader(this.globalHeader);
+            // TrkHeaderProcessor.printTrkHeader(this.globalHeader);
         } catch (error) {
             console.error('Error streaming or processing the TRK file header:', error);
         }
@@ -110,13 +110,8 @@ export class TrackProcessor {
      * @returns {Promise<{processState: ProcessState; timestamp: string}>} A promise that resolves to the processing state and a timestamp.
      */
     async processTrackData(randomTrackNumbers: number[], trackNumber: number, filePath: string): Promise<{ processState: ProcessState; timestamp: string, arrayBuffer?: ArrayBuffer }> {
-
-        // Get the current date and time
         const now = new Date();
-
-        // Format the timestamp as YYYYMMDD_HHMMSS
         const timestamp = now.toISOString().replace(/[-:]/g, '').replace('T', '_').slice(0, 15);
-
 
         if (!this.globalHeader) {
             console.error('Error: Global header is not initialized.');
@@ -127,27 +122,24 @@ export class TrackProcessor {
         const vertices: Vertex[] = [];
         const edges: Edge[] = [];
         const orientations: number[][] = [];
+        const scalarsArray: { [key: string]: number }[] = [];
         let trackProcessedCount = 0;
         let vertexIndex = 0;
 
         try {
-
             const { dataView, buffer } = await this.loadFileBuffer(filePath);
-            console.log('Buffer length:', buffer.length);
-            console.log('DataView length:', dataView.byteLength);
-
             let offset = 1000;
 
+            const numScalarsPerPoint = this.globalHeader.n_scalars || 0;
+            const scalarNames = this.globalHeader.scalar_name || [];
+            let minScalar = Infinity;
+            let maxScalar = -Infinity;
+
             while (trackProcessedCount < maxTracksToProcess && offset < buffer.byteLength) {
-                // Read the number of points in the track (first 4 bytes)
-                const n_points = dataView.getInt32(offset, true); // true indicates little-endian byte order.
+                const n_points = dataView.getInt32(offset, true);
                 offset += 4;
 
-                // console.log(`Track ${trackNumber} processed, number of points: ${n_points}\n`);
-
-                // Only process the track if it is in the random track numbers
                 if (randomTrackNumbers.includes(trackNumber)) {
-                    // Process each point in the track (x, y, z -> 12 bytes per point)
                     const points: number[][] = [];
                     for (let i = 0; i < n_points; i++) {
                         const x = dataView.getFloat32(offset, true);
@@ -157,52 +149,73 @@ export class TrackProcessor {
                         points.push([x, y, z]);
 
                         const voxelPoint: [number, number, number] = [x, y, z];
-                        const affine =
-                            VoxelToRASConverter.getAffineToRasmm(this.globalHeader);
+                        const affine = VoxelToRASConverter.getAffineToRasmm(this.globalHeader);
                         const rasPoint = VoxelToRASConverter.applyAffineMatrix(voxelPoint, affine);
 
-                        // Add vertex data
                         vertices.push({ x: rasPoint[0], y: rasPoint[1], z: rasPoint[2] });
 
-                        // Add edge data
                         if (i > 0) {
                             edges.push({ vertex1: vertexIndex - 1, vertex2: vertexIndex });
                         }
                         vertexIndex++;
+
+                        const scalars: number[] = [];
+                        const normalizedScalars: number[] = [];
+
+                        if (numScalarsPerPoint > 0) {
+                            for (let s = 0; s < numScalarsPerPoint; s++) {
+                                const scalarValue = dataView.getFloat32(offset, true);
+                                scalars.push(scalarValue);
+                                offset += 4;
+                        
+                                // Update the min and max scalar values
+                                if (scalarValue < minScalar) minScalar = scalarValue;
+                                if (scalarValue > maxScalar) maxScalar = scalarValue;
+                            }
+                        
+                            // Normalize scalars after finding min and max
+                            for (const scalar of scalars) {
+                                const normalizedScalar = (scalar - minScalar) / (maxScalar - minScalar);
+                                normalizedScalars.push(normalizedScalar);
+                            }
+                        
+                            scalarsArray.push(
+                                normalizedScalars.reduce((acc, scalar, idx) => {
+                                    acc[scalarNames[idx] || `scalar${idx + 1}`] = scalar;
+                                    return acc;
+                                }, {} as { [key: string]: number })
+                            );
+                        }
+
+
                     }
 
-                    // Compute and add orientation for the tract
                     const orient = TrackProcessor.computeOrientation(points);
                     orientations.push(...orient);
 
-                    trackProcessedCount++; // Increment the number of processed tracks
+                    trackProcessedCount++;
 
                     if (trackProcessedCount >= maxTracksToProcess) {
-
-                        // Create the ArrayBuffer
-                        const arrayBuffer = SkeletonWriter.createArrayBuffer(vertices, edges, orientations);
-                        console.log(arrayBuffer)
-                        // Return the state, timestamp, and arrayBuffer
+                        // After processing, log the min and max values
+                        console.log(`Scalar range: min = ${minScalar}, max = ${maxScalar}`);
+                        const arrayBuffer = SkeletonWriter.createArrayBuffer(vertices, edges, orientations, scalarsArray);
                         return { processState: { byteOffset: 0, trackNumber, offset: 0 }, timestamp, arrayBuffer };
-
                     }
                 } else {
-                    offset += n_points * 12; // Skip the track data if it's not in the selected tracks
+                    offset += n_points * (12 + numScalarsPerPoint * 4);
                 }
 
                 trackNumber++;
             }
 
-            // writeStream.end();
             return { processState: { byteOffset: 0, trackNumber, offset: 0 }, timestamp };
 
         } catch (error) {
-
             console.error('Error fetching or processing track data:', error);
             return { processState: { byteOffset: 0, trackNumber, offset: 0 }, timestamp };
-
         }
     }
+
 
     /**
      * Shuffles and selects a random number of track indices from a total number of tracks.
@@ -225,7 +238,7 @@ export class TrackProcessor {
      * @returns {Promise<{dataView: DataView; buffer: Buffer}>} A promise that resolves to the DataView and buffer of the file.
      */
     loadFileBuffer(filePath: string) {
-        
+
         return axios.get(filePath, { responseType: 'arraybuffer' })
             .then(response => {
                 const buffer = Buffer.from(response.data);
