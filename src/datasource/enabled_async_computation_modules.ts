@@ -9,5 +9,6 @@ import "#datasource/nifti/async_computation";
 import "#datasource/obj/async_computation";
 import "#datasource/precomputed/async_computation";
 import "#datasource/render/async_computation";
+import "#datasource/trk/async_computation";
 import "#datasource/vtk/async_computation";
 import "#datasource/zarr/async_computation";

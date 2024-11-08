@@ -29,6 +29,7 @@ export function decodeSkeletonChunk(
   response: ArrayBuffer,
   vertexAttributes: Map<string, VertexAttributeInfo>,
 ) {
+
   const dv = new DataView(response);
   const numVertices = dv.getUint32(0, true);
   const numEdges = dv.getUint32(4, true);
