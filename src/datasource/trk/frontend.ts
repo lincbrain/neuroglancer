@@ -209,17 +209,17 @@ function getMetadata() {
         }
     ];
 
-    // Check if scalars are present in the globalHeader and add them as vertex attributes
-    if (globalHeader && globalHeader.scalar_name) {
-        for (const scalarName of globalHeader.scalar_name) {
-            if(scalarName != ''){
+    // Check if globalHeader, globalHeader_n_scalar, and scalar_name are present
+    if (globalHeader && globalHeader.n_scalars && globalHeader.scalar_name) {
+        for (let i = 0; i < globalHeader.n_scalars; i++) {
+            const scalarName = globalHeader.scalar_name[i];
+            if (scalarName && scalarName !== '') { // Ensure scalarName is valid and not empty
                 vertexAttributes.push({
                     "id": scalarName,               // Use the scalar name as the ID
-                    "data_type": "float32",          // Assuming the scalar data type is float32
-                    "num_components": 1              // Each scalar is a single component
+                    "data_type": "float32",         // Assuming the scalar data type is float32
+                    "num_components": 1             // Each scalar is a single component
                 });
             }
-            
         }
     }
 
@@ -251,6 +251,7 @@ function getPropMetadata() {
     };
 }
 
+const n_tracks = 1000;
 async function getSkeletonBuffer(url: string): Promise<ArrayBuffer> {
     const trackProcessor = new TrackProcessor();
     await trackProcessor.streamAndProcessHeader(url, 0, 999);
@@ -266,7 +267,7 @@ async function getSkeletonBuffer(url: string): Promise<ArrayBuffer> {
 
     const totalTracks = globalHeader?.n_count;
     if (totalTracks !== undefined) {
-        const randomTrackNumbers = trackProcessor.getRandomTrackIndices(totalTracks, 1000);
+        const randomTrackNumbers = trackProcessor.getRandomTrackIndices(totalTracks, n_tracks);
 
         // Process track data and get the skeleton data in arrayBuffer format
         const skeleton = await trackProcessor.processTrackData(randomTrackNumbers, 1, url);
