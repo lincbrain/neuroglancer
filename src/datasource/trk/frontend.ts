@@ -87,10 +87,6 @@ class trkSkeletonSource extends WithParameters(
     get vertexAttributes() {
         return this.parameters.metadata.vertexAttributes;
     }
-
-    // get skeleton() {
-    //     return this.parameters.binarydata.skeleton;
-    // }
 }
 
 function parseTransform(data: any): mat4 {
@@ -141,11 +137,6 @@ function parseSkeletonMetadata(data: any): ParsedSkeletonMetadata {
             vertexAttributes.set(id, { dataType, numComponents });
         });
     });
-    // const sharding = verifyObjectProperty(
-    //     data,
-    //     "sharding",
-    //     parseShardingParameters,
-    // );
     const segmentPropertyMap = verifyObjectProperty(
         data,
         "segment_properties",
@@ -154,7 +145,6 @@ function parseSkeletonMetadata(data: any): ParsedSkeletonMetadata {
     return {
         metadata: {
             transform, vertexAttributes,
-            // sharding 
         } as SkeletonMetadata,
         segmentPropertyMap,
     };
@@ -466,7 +456,6 @@ export function getSegmentPropertyMap(
 async function getSegmentPropertyMapDataSource(
     options: GetDataSourceOptions,
     credentialsProvider: SpecialProtocolCredentialsProvider,
-    // url: string,
     metadata: unknown,
 ): Promise<DataSource> {
     options;
@@ -481,7 +470,6 @@ async function getSegmentPropertyMapDataSource(
                         options.chunkManager,
                         credentialsProvider,
                         metadata,
-                        // url,
                     ),
                 },
             },
@@ -558,7 +546,6 @@ export class TrkDataSource extends DataSourceProvider {
                         return await getSegmentPropertyMapDataSource(
                             options,
                             credentialsProvider,
-                            // url,
                             metadata,
                         );
 
