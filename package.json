@@ -8,7 +8,7 @@
     "url": "git+https://github.com/google/neuroglancer.git"
   },
   "engines": {
-    "node": ">=20.10 <21 || >=21.2"
+    "node": ">=20.11 <21 || >=21.2"
   },
   "browserslist": [
     "last 2 Chrome versions",
@@ -89,9 +89,8 @@
     "lodash-es": "^4.17.21",
     "mathjs": "^13.2.0",
     "nifti-reader-js": "^0.6.8",
-    "numcodecs": "^0.3.1",
-    "pako": "^2.1.0",
-    "path-browserify": "^1.0.1"
+    "numcodecs": "^0.3.2",
+    "pako": "^2.1.0"
   },
   "overrides": {
     "@puppeteer/browsers": ">=2"
