@@ -437,6 +437,9 @@ function startChunkDownload(chunk: Chunk) {
   const downloadCancellationToken = (chunk.downloadCancellationToken =
     new CancellationTokenSource());
   const startTime = Date.now();
+  console.log(startTime)
+  console.log(chunk)
+  console.log(downloadCancellationToken)
   chunk.source!.download(chunk, downloadCancellationToken).then(
     () => {
       if (chunk.downloadCancellationToken === downloadCancellationToken) {
