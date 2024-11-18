@@ -513,6 +513,8 @@ export class TrkDataSource extends DataSourceProvider {
                     options.credentialsManager,
                 );
 
+                console.log(url)
+
                 let metadata: any;
                 try {
                     metadata = await getMetadata();
@@ -533,7 +535,10 @@ export class TrkDataSource extends DataSourceProvider {
                     throw new RedirectError(redirect);
                 }
                 const t = verifyOptionalObjectProperty(metadata, "@type", verifyString);
-
+                console.log(t)
+                console.log(options)
+                console.log(credentialsProvider)
+                console.log(url)
                 switch (t) {
                     case "neuroglancer_skeletons":
                         return await getSkeletonsDataSource(
@@ -555,7 +560,6 @@ export class TrkDataSource extends DataSourceProvider {
             },
         );
     }
-
     completeUrl(options: CompleteUrlOptions) {
         return completeHttpPath(
             options.credentialsManager,

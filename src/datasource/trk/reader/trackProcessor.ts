@@ -45,6 +45,7 @@ export class TrackProcessor {
      * @param {number} end - The end byte position for the range request.
      */
     async streamAndProcessHeader(url: string, start: number, end: number) {
+
         try {
             const response = await axios.get(url, {
                 responseType: 'arraybuffer',
