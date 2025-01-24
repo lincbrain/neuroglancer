@@ -15,6 +15,5 @@ import "#datasource/nifti/register_default";
 import "#datasource/obj/register_default";
 import "#datasource/precomputed/register_default";
 import "#datasource/render/register_default";
-import "#datasource/trk/register_default";
 import "#datasource/vtk/register_default";
 import "#datasource/zarr/register_default";
