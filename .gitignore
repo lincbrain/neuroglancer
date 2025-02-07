@@ -24,3 +24,7 @@ tsconfig.tsbuildinfo
 .idea/
 yarn.lock
 .DS_Store
+/test-results
+/playwright-report
+-/docs/python/api/index.rst
+/docs/python/api/*.rst
