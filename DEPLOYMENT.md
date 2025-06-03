@@ -65,7 +65,27 @@ and within that directory, a few levels down (in `.../cloudfront/frontend/`) -- 
 
 These files are generated via the standard build process that `Neuroglancer` offers -- as noted in the `build` scripts command in Neuroglancer's `package.json`: https://github.com/google/neuroglancer/blob/master/package.json#L23
 
-# Issuance of presigned cookies
+## Running npm run build from neuroglancer's root
+
+To create the file structre above, you would need to be in the root directory of `neuroglancer` where the `package.json` is.
+
+You may have to conform to the proper `node` version locally in order to build the static `dist/` folder that will eventually be present to deploy Neuroglancer.
+
+You'll notice in the `package.json`, there is a prescribed `engines` entry, such as:
+
+```
+"engines": {
+    "node": ">=22"
+},
+```
+
+Prior to running `npm run build`, you may want to use `nvm` or a similar tool to make a `node>=22` environment locally.
+
+Lastly, once you are within a `node>=22`, you may want a clean `node_modules` install, where you would simply run `npm i`
+
+After these steps, `npm run build` should (hopefully) work!
+
+## Issuance of presigned cookies
 
 In order for a user to access the Neuroglancer, they must have so-called presigned cookies that are currently issued via an endpoint on LINC Archive's website -- these cookies can either be retrieved via the UI or directly at the endpoint of `https://api.lincbrain.org/api/permissions/s3/`
 
@@ -78,6 +98,8 @@ CloudFront-Signature
 ```
 
 These cookies will only be visible when on a `*.lincbrain.org` URL, as they should have the `SameSite=True` attribute.
+
+
 
 
 
